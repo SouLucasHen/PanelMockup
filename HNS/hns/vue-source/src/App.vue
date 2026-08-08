@@ -9,6 +9,8 @@ import { onMounted, onUnmounted, ref } from "vue";
 import { useSettingsStore } from "@stores/settings";
 import { usePlayerStore } from "@stores/player";
 import setTheme from "@utils/setTheme";
+import loadTheme from "@utils/loadTheme";
+import fetchNui from "@utils/fetchNui";
 
 import Inicio from "./views/Inicio.vue";
 import History from "@icons/History.vue";
@@ -28,11 +30,7 @@ const switchTab = (tab) => {
 // ==================== NUI / FECHAR ====================
 const closeNUI = () => {
   settings.display = false;
-  fetch(`https://${GetParentResourceName()}/closeNUI`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json; charset=UTF-8" },
-    body: JSON.stringify({}),
-  }).catch(() => {});
+  fetchNui("closeNUI");
 };
 
 // ==================== LISTENER DE MENSAGENS ====================
@@ -47,10 +45,6 @@ const handleMessage = (event) => {
     player.playerName = payload.PlayerName || payload.playerName || "Jogador";
     player.avatar = payload.Avatar || payload.avatar || "";
     userImgError.value = false;
-
-    if (payload.Theme || payload.theme) {
-      setTheme(payload.Theme || payload.theme);
-    }
   } else if (actionName === "Close") {
     settings.display = false;
   }
@@ -66,6 +60,9 @@ const handleKeydown = (event) => {
 onMounted(() => {
   const theme = document.body.getAttribute("theme");
   if (theme) setTheme(theme);
+
+  // Tema vindo do resource "vrp" (mesmo padrão da HUD)
+  loadTheme();
 
   window.addEventListener("message", handleMessage);
   document.addEventListener("keydown", handleKeydown);

@@ -13,8 +13,6 @@ import isBrowser from "@utils/isBrowser";
 if (import.meta.env.DEV && isBrowser()) {
   const RESOURCE = "hensa-panel";
   const THEME = "#66ad43";
-  const BACKGROUND_URL = "https://atmusbr.github.io/background-vehicle-map.jpg";
-  const FAVICON_URL = "https://atmusbr.github.io/favicon.png";
 
   // ==================== STUB DO RESOURCE NAME ====================
   if (typeof window.GetParentResourceName !== "function") {
@@ -35,11 +33,13 @@ if (import.meta.env.DEV && isBrowser()) {
       send("Close");
       return {};
     },
+    // Mesma convenção da HUD: o tema vem do resource "vrp"
+    Theme: () => ({ main: THEME }),
   };
 
   window.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : (input?.url ?? "");
-    const match = new RegExp(`^https?://(?:${RESOURCE}|nui-fallback)/(.+)$`).exec(url);
+    const match = new RegExp(`^https?://(?:${RESOURCE}|vrp|nui-fallback)/(.+)$`).exec(url);
     if (!match) return realFetch(input, init);
     const method = match[1];
     let body = {};
@@ -50,24 +50,6 @@ if (import.meta.env.DEV && isBrowser()) {
     const data = handler ? await handler(body) : {};
     return json(data);
   };
-
-  // ==================== FAVICON + FUNDO (mockup de teste, igual à HUD) ====================
-  const applyAssets = () => {
-    let icon = document.querySelector("link[rel~='icon']");
-    if (!icon) {
-      icon = document.createElement("link");
-      icon.rel = "icon";
-      document.head.appendChild(icon);
-    }
-    icon.href = FAVICON_URL;
-    const s = document.body.style;
-    s.backgroundImage = `url("${BACKGROUND_URL}")`;
-    s.backgroundSize = "cover";
-    s.backgroundPosition = "center";
-    s.backgroundRepeat = "no-repeat";
-  };
-  if (document.body) applyAssets();
-  else document.addEventListener("DOMContentLoaded", applyAssets);
 
   // ==================== SEED INICIAL ====================
   // Mesma convenção da HUD: { name (Action), Payload }.

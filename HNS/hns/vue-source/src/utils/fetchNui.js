@@ -1,14 +1,17 @@
 /**
- * Chamada NUI para o resource do FiveM.
+ * Chamada NUI para o resource do FiveM. O tema sempre vem do resource "vrp";
+ * os demais eventos vão para o resource atual (GetParentResourceName).
  * @param {string} method
  * @param {object} [data]
  * @returns {Promise<any>}
  */
 export default async function fetchNui(method, data) {
   const resource =
-    typeof GetParentResourceName === "function"
-      ? GetParentResourceName()
-      : "nui-fallback";
+    method === "Theme"
+      ? "vrp"
+      : typeof GetParentResourceName === "function"
+        ? GetParentResourceName()
+        : "nui-fallback";
 
   try {
     const response = await fetch(`https://${resource}/${method}`, {
