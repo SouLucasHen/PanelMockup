@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    font-size: 1rem;
+    --main: 102 173 67;
+    --mainText: 255 255 255;
+    --mainHover: 77 130 50;
+    /* Versão mais clara do --main (usada nos círculos de contraste) */
+    --mainLight: 163 206 142;
+    /* Fundo do modal: verde escuro com subtons do tema */
+    --from: 12 21 9;
+    --to: 20 38 15;
+}
+
+/* Responsividade igual ao vue-source da HUD: a raiz escala o font-size por
+   faixa de resolução e todo o conteúdo (que usa rem) escala junto de forma
+   proporcional — painel e conteúdo conversam entre si, sem reflow. */
+@media screen and (max-height: 600px), screen and (max-width: 800px) {
+    :root { font-size: 0.3rem; }
+}
+@media screen and (min-width: 800px) and (min-height: 600px) {
+    :root { font-size: 0.425rem; }
+}
+@media screen and (min-width: 1000px) and (min-height: 700px) {
+    :root { font-size: 0.55rem; }
+}
+@media screen and (min-width: 1100px) and (min-height: 700px) {
+    :root { font-size: 0.6rem; }
+}
+@media screen and (min-width: 1300px) and (min-height: 700px) {
+    :root { font-size: 0.7rem; }
+}
+@media screen and (min-width: 1400px) and (min-height: 700px) {
+    :root { font-size: 0.75rem; }
+}
+@media screen and (min-width: 1600px) and (min-height: 800px) {
+    :root { font-size: 0.8rem; }
+}
+@media screen and (min-width: 1750px) and (min-height: 900px) {
+    :root { font-size: 0.9rem; }
+}
+@media screen and (min-width: 1850px) and (min-height: 1000px) {
+    :root { font-size: 1rem; }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+* input {
+    user-select: text;
+}
+
+/* Evita arrasto de imagens */
+img {
+    pointer-events: none;
+    -webkit-user-drag: none;
+    user-drag: none;
+}
+
+html,
+body,
+#app {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+body {
+    @apply text-white bg-transparent;
+}
+
+/* ==================== TRANSIÇÕES ==================== */
+
+/* Painel (modal): ao abrir aparece DEPOIS do fundo (atraso no enter);
+   ao fechar some PRIMEIRO (sem atraso no leave). */
+.fade-enter-active {
+    transition: opacity 0.3s ease 0.2s, transform 0.3s ease 0.2s;
+}
+.fade-leave-active {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+/* Fundo externo (tela cheia): ao abrir aparece PRIMEIRO (sem atraso no enter);
+   ao fechar some DEPOIS do painel (atraso no leave).
+   Mesmo ritmo do painel (0.3s) e mesmo atraso (0.2s) para as duas
+   sequências ficarem espelhadas: 0.5s no total. */
+.bg-fade-enter-active {
+    transition: opacity 0.3s ease;
+}
+.bg-fade-leave-active {
+    transition: opacity 0.3s ease 0.2s;
+}
+.bg-fade-enter-from,
+.bg-fade-leave-to {
+    opacity: 0;
+}
+
+/* ==================== FUNDO DO PAINEL ==================== */
+
+.bg-default {
+    background-image: linear-gradient(
+        to bottom right,
+        rgb(var(--from) / 0.92),
+        rgb(var(--to) / 0.92)
+    );
+}
+
+.bg-shadow-circle {
+    background: radial-gradient(circle, rgb(var(--mainLight)), rgb(var(--mainLight) / 0) 75%);
+}
+
+/* ==================== SCROLLBAR ==================== */
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
