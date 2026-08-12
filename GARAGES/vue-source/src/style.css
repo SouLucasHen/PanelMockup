@@ -12,6 +12,16 @@
     /* Fundo do modal: verde escuro com subtons do tema */
     --from: 12 21 9;
     --to: 20 38 15;
+    /* Botões da garagem — sobrescritos pelo Theme.garage vindo da vrp
+       (vrp/config/Global.lua). Hover derivado: base clareada ~12%. */
+    --garageGet: 63 164 102;
+    --garageGetHover: 86 175 120;
+    --garageMechanic: 164 113 63;
+    --garageMechanicHover: 175 130 86;
+    --garageSave: 173 68 67;
+    --garageSaveHover: 183 90 90;
+    --garageSell: 115 115 115;
+    --garageSellHover: 132 132 132;
 }
 
 /* Responsividade igual ao vue-source da HUD: a raiz escala o font-size por
@@ -57,10 +67,6 @@
     -ms-user-select: none;
 }
 
-* input {
-    user-select: text;
-}
-
 /* Evita arrasto de imagens */
 img {
     pointer-events: none;
@@ -78,6 +84,8 @@ body,
 
 body {
     @apply text-white bg-transparent;
+    /* Padrão de fonte da HUD (study): base leve — ênfase só com font-semibold */
+    font-weight: 300;
 }
 
 /* ==================== TRANSIÇÕES ==================== */
@@ -113,6 +121,15 @@ body {
 
 /* ==================== FUNDO DO PAINEL ==================== */
 
+/* Wallpaper simulando o mundo do jogo — usado apenas em dev (navegador),
+   quando o isDev do App.vue troca o fundo escuro por esta imagem.
+   No jogo o fundo é o mundo real, então esta classe não entra no build. */
+.bg-wallpaper {
+    background-image: url("https://raw.githubusercontent.com/SouLucasHen/Versions/refs/heads/main/images/wallpaper.png");
+    background-size: cover;
+    background-position: center;
+}
+
 .bg-default {
     background-image: linear-gradient(
         to bottom right,
@@ -133,5 +150,25 @@ body {
 .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+/* Barra de rolagem estilizada e minimalista da área dos cards: trilho
+   transparente e polegar fino, arredondado e na cor do tema. */
+.cards-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--main) / 0.35) transparent;
+}
+.cards-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+.cards-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+.cards-scroll::-webkit-scrollbar-thumb {
+    background: rgb(var(--main) / 0.35);
+    border-radius: 9999px;
+}
+.cards-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--main) / 0.55);
 }
 

@@ -214,7 +214,7 @@ local Garages = {
 	["141"] = { x = 1961.97, y = 5181.03, z = 47.95,
 		["1"] = { 1967.33,5179.34,47.06,158.75 }
 	},
-	["142"] = { x = 453.74, y = -600.6, z = 28.59,
+	["142"] = { x = 453.47, y = -602.34, z = 28.59,
 		["1"] = { 462.81,-606.03,28.49,212.6 },
 		["2"] = { 461.54,-612.34,28.49,215.44 },
 		["3"] = { 460.98,-619.81,28.49,215.44 }
@@ -236,7 +236,7 @@ local Garages = {
 		["3"] = { 1271.95,-3271.04,6.10,91.00 },
 		["4"] = { 1272.11,-3266.03,6.10,91.00 }
 	},
-	["147"] = { x = 905.6, y = -165.08, z = 74.11,
+	["147"] = { x = 901.97, y = -167.97, z = 74.07,
 		["1"] = { 916.21,-170.61,74.04,99.22 },
 		["2"] = { 918.35,-167.18,74.22,99.22 },
 		["3"] = { 920.64,-163.54,74.43,99.22 }
@@ -278,6 +278,7 @@ function Creative.SpawnPosition(Select)
 	SendNUIMessage({ Action = "Close" })
 	SetNuiFocus(false,false)
 	Opened = false
+	vRP.Destroy()
 
 	return Selected
 end
@@ -358,7 +359,6 @@ AddEventHandler("garages:Delete",function(Vehicle,Garage)
 			Tyres[Number] = (GetTyreHealth(Vehicle,Number) ~= 1000.0 and true or false)
 		end
 
-		-- Garage só vem do painel (NUI Delete). O /dv não envia e não altera o Save.
 		vSERVER.Delete(NetworkGetNetworkIdFromEntity(Vehicle),Doors,Tyres,GetVehicleNumberPlateText(Vehicle),Garage)
 	end
 end)
@@ -489,6 +489,8 @@ CreateThread(function()
 								SetNuiFocus(true,true)
 								TriggerEvent("target:Debug")
 								SendNUIMessage({ Action = "Open", Payload = Vehicles })
+
+								vRP.CreateObjects("amb@code_human_in_bus_passenger_idles@female@tablet@idle_a","idle_a","prop_cs_tablet",49,28422,-0.05,0.0,0.0,0.0,0.0, 0.0)
 							end
 						end
 					else
@@ -498,6 +500,7 @@ CreateThread(function()
 					end
 				elseif Opened and Opened == Number then
 					TriggerEvent("garages:Close")
+					vRP.Destroy()
 				end
 			end
 
@@ -524,10 +527,10 @@ end)
 RegisterNUICallback("Spawn",function(Data,Callback)
 	TriggerServerEvent("garages:Spawn",Data.Model,Opened)
 
-	-- Fecha a interface ao pegar o veículo
 	SendNUIMessage({ Action = "Close" })
 	SetNuiFocus(false,false)
 	Opened = false
+	vRP.Destroy()
 
 	Callback("Ok")
 end)
@@ -535,15 +538,12 @@ end)
 -- DELETE
 -----------------------------------------------------------------------------------------------------------------------------------------
 RegisterNUICallback("Delete",function(Data,Callback)
-	-- Guarda o veículo na garagem aberta: o Opened vira o campo Save no banco
-	-- (server Creative.Delete). Só o painel passa a garagem — o /dv não passa
-	-- e portanto não altera o Save.
 	TriggerEvent("garages:Delete",nil,Opened)
 
-	-- Fecha a interface ao guardar o veículo
 	SendNUIMessage({ Action = "Close" })
 	SetNuiFocus(false,false)
 	Opened = false
+	vRP.Destroy()
 
 	Callback("Ok")
 end)
@@ -572,11 +572,25 @@ RegisterNUICallback("Transfer",function(Data,Callback)
 	Callback("Ok")
 end)
 -----------------------------------------------------------------------------------------------------------------------------------------
+-- MECHANIC
+-----------------------------------------------------------------------------------------------------------------------------------------
+RegisterNUICallback("Mechanic",function(Data,Callback)
+	TriggerServerEvent("garages:Mechanic",Data.Model)
+
+	SendNUIMessage({ Action = "Close" })
+	SetNuiFocus(false,false)
+	Opened = false
+	vRP.Destroy()
+
+	Callback("Ok")
+end)
+-----------------------------------------------------------------------------------------------------------------------------------------
 -- CLOSE
 -----------------------------------------------------------------------------------------------------------------------------------------
 RegisterNUICallback("Close",function(Data,Callback)
 	SetNuiFocus(false,false)
 	Opened = false
+	vRP.Destroy()
 
 	Callback("Ok")
 end)
@@ -588,6 +602,7 @@ AddEventHandler("garages:Close",function()
 	SendNUIMessage({ Action = "Close" })
 	SetNuiFocus(false,false)
 	Opened = false
+	vRP.Destroy()
 end)
 -----------------------------------------------------------------------------------------------------------------------------------------
 -- GARAGES:PROPERTYS

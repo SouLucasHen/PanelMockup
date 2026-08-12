@@ -13,6 +13,16 @@ import isBrowser from "@utils/isBrowser";
 if (import.meta.env.DEV && isBrowser()) {
   const RESOURCE = "hensa-panel";
   const THEME = "#66ad43";
+  // Mesmas cores do Theme.garage em vrp/config/Global.lua — edite lá para
+  // ver os botões com a cor configurada (no dev, este mock espelha a config)
+  const GARAGE_THEME = {
+    get: "#3fa466",
+    mechanic: "#a4713f",
+    save: "#ad4443",
+    sell: "#737373",
+    // Espelha o Theme.garage.scribble da vrp: false desliga rabiscos/glows
+    scribble: true,
+  };
 
   // ==================== STUB DO RESOURCE NAME ====================
   if (typeof window.GetParentResourceName !== "function") {
@@ -58,8 +68,14 @@ if (import.meta.env.DEV && isBrowser()) {
       console.info("[mock] Transfer (transferir):", body);
       return {};
     },
+    Mechanic: (body) => {
+      console.info("[mock] Mechanic (solicitar mecânico):", body);
+      // Mesmo comportamento do client (client-side/core.lua): fecha o painel
+      send("Close");
+      return {};
+    },
     // Mesma convenção da HUD: o tema vem do resource "vrp"
-    Theme: () => ({ main: THEME }),
+    Theme: () => ({ main: THEME, garage: GARAGE_THEME }),
   };
 
   window.fetch = async (input, init) => {
@@ -83,17 +99,26 @@ if (import.meta.env.DEV && isBrowser()) {
   // Seed no MESMO formato que o client envia (SendNUIMessage no
   // client-side/core.lua): { Action = "Open", Payload = Vehicles } onde
   // Payload é o array de veículos direto. Cada veículo: Model, Name, Tax, Mode,
-  // Weight, Engine, Body, Fuel, TaxTime, RentalTime. O store normaliza para o
-  // formato da interface.
+  // Weight, Engine, Body, Fuel, Plate, Health, TaxTime, RentalTime. O store
+  // normaliza para o formato da interface.
   const open = () => {
     send("Open", [
-      // TaxTime preenchido = IPVA em dia (botão de taxa desativado); false = vencido
-      { Model: "emperor", Name: "Emperor", Tax: 750, Mode: "Normal", Weight: 125, Engine: 900, Body: 600, Fuel: 100, TaxTime: "30 Dias", RentalTime: false },
-      { Model: "sultan", Name: "Sultan", Tax: 600, Mode: "Normal", Weight: 90, Engine: 750, Body: 800, Fuel: 55, TaxTime: false, RentalTime: false },
-      { Model: "sentinel2", Name: "Sentinel XS", Tax: 700, Mode: "Normal", Weight: 110, Engine: 850, Body: 450, Fuel: 70, TaxTime: "30 Dias", RentalTime: false },
-      { Model: "blista", Name: "Blista", Tax: 400, Mode: "Normal", Weight: 60, Engine: 600, Body: 900, Fuel: 80, TaxTime: false, RentalTime: false },
-      { Model: "oracle", Name: "Oracle", Tax: 1450000, Mode: "Normal", Weight: 140, Engine: 950, Body: 500, Fuel: 65, TaxTime: "30 Dias", RentalTime: false },
-      { Model: "f620", Name: "F620", Tax: 450, Mode: "Normal", Weight: 70, Engine: 800, Body: 700, Fuel: 60, TaxTime: "30 Dias", RentalTime: false },
+      // TaxTime preenchido = IPVA em dia (botão de taxa oculto); false = vencido
+      // Health é 0-100 (chassi) e Plate é a placa exibida antes do peso
+      { Model: "emperor", Name: "Emperor", Tax: 750, Mode: "Normal", Weight: 125, Engine: 900, Body: 600, Health: 85, Fuel: 100, Plate: "74NSY128", TaxTime: "30 Dias", RentalTime: false },
+      { Model: "sultan", Name: "Sultan", Tax: 600, Mode: "Normal", Weight: 90, Engine: 750, Body: 800, Health: 95, Fuel: 55, Plate: "65GTV204", TaxTime: false, RentalTime: false },
+      { Model: "sentinel2", Name: "Sentinel XS", Tax: 700, Mode: "Normal", Weight: 110, Engine: 850, Body: 450, Health: 72, Fuel: 70, Plate: "38RKM491", TaxTime: "30 Dias", RentalTime: false },
+      // Blista como exemplo de veículo de serviço NÃO adquirido (Owned: false):
+      // o card mostra apenas nome, peso e o aviso de retirada
+      { Model: "blista", Name: "Blista", Tax: 400, Mode: "Work", Work: true, Owned: false, Weight: 0, Engine: 600, Body: 900, Health: 88, Fuel: 80, Plate: "51PXQ867", TaxTime: false, RentalTime: false },
+      // Taxi como exemplo de veículo de serviço ADQUIRIDO (Owned: true):
+      // mostra o card completo normalmente (sem Transferir)
+      { Model: "taxi", Name: "Taxi", Tax: 500, Mode: "Work", Work: true, Owned: true, Weight: 95, Engine: 700, Body: 620, Health: 78, Fuel: 45, Plate: "09KLM321", TaxTime: "30 Dias", RentalTime: false },
+      // Oracle como exemplo de veículo alugado: RentalTime preenchido → selo amarelo "Alugado"
+      { Model: "oracle", Name: "Oracle", Tax: 1450000, Mode: "Normal", Weight: 140, Engine: 950, Body: 500, Health: 65, Fuel: 65, Plate: "42HDS733", TaxTime: "30 Dias", RentalTime: "3 Dias" },
+      // Voltic como exemplo de veículo elétrico: o card mostra "Bateria"
+      // em vez de "Gasolina" no status (lista de elétricos no store)
+      { Model: "voltic", Name: "Voltic", Tax: 450, Mode: "Normal", Weight: 70, Engine: 800, Body: 700, Health: 91, Fuel: 60, Plate: "58WNE120", TaxTime: "30 Dias", RentalTime: false },
     ]);
   };
 
@@ -120,12 +145,6 @@ if (import.meta.env.DEV && isBrowser()) {
         buttons: [
           { label: "Abrir", action: () => open() },
           { label: "Fechar", action: () => send("Close") },
-        ],
-      },
-      {
-        label: "Reset",
-        buttons: [
-          { label: "Resetar tudo", action: () => open() },
         ],
       },
     ];

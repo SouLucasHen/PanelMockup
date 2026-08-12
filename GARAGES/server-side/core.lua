@@ -352,10 +352,12 @@ function Creative.Vehicles(Number)
 	end
 
 	if exports.bank:CheckTaxes(Passport) or exports.bank:CheckFines(Passport) then
+		TriggerClientEvent("Notify",source,"Atenção","Você possui débitos bancários.","amarelo",5000)
 		return false
 	end
 
 	if Garage.Permission and not vRP.HasService(Passport,Garage.Permission) then
+		TriggerClientEvent("Notify",source,"Atenção","Você não possui permissões.","amarelo",5000)
 		return false
 	end
 
@@ -366,43 +368,53 @@ function Creative.Vehicles(Number)
 		for _,Model in pairs(Works[Selected]) do
 			if exports.vrp:VehicleExist(Model) then
 				local TaxTimer,RentalTimer = false,false
-				local Consult = vRP.SelectVehicle(Passport,Model)
+				local Consult = vRP.SelectVehicle(Passport,Model)					if Consult then
+						local ConsultPlate = Consult.Plate or Consult.plate
+						-- Veículo fora da garagem (spawnado no mundo): o card fica oculto
+						if not Spawn[ConsultPlate] then
+							if Consult.Tax > os.time() then
+								TaxTimer = CompleteTimers(Consult.Tax - os.time(),true)
+							end
 
-				if Consult then
-					if Consult.Tax > os.time() then
-						TaxTimer = CompleteTimers(Consult.Tax - os.time())
-					end
+							if Consult.Rental ~= 0 then
+								if Consult.Rental > os.time() then
+									RentalTimer = CompleteTimers(Consult.Rental - os.time(),true)
+								else
+									RentalTimer = "Vencido"
+								end
+							end
 
-					if Consult.Rental ~= 0 then
-						if Consult.Rental > os.time() then
-							RentalTimer = CompleteTimers(Consult.Rental - os.time())
-						else
-							RentalTimer = "Vencido"
+							table.insert(Vehicles,{
+								Model = Model,
+								Name = exports.vrp:VehicleName(Model),
+								Tax = exports.vrp:VehiclePrice(Model) * 0.15,
+								Mode = exports.vrp:VehicleMode(Model),
+								Work = true,
+								Owned = true,
+								Weight = Consult.Weight,
+								Engine = Consult.Engine / 10,
+								Body = Consult.Body / 10,
+								Fuel = Consult.Fuel,
+								Plate = ConsultPlate,
+								Health = (Consult.Health or 1000) / 10,
+								TaxTime = TaxTimer,
+								RentalTime = RentalTimer
+							})
 						end
-					end
-
+					else
 					table.insert(Vehicles,{
 						Model = Model,
 						Name = exports.vrp:VehicleName(Model),
 						Tax = exports.vrp:VehiclePrice(Model) * 0.15,
 						Mode = exports.vrp:VehicleMode(Model),
-						Weight = Consult.Weight,
-						Engine = Consult.Engine / 10,
-						Body = Consult.Body / 10,
-						Fuel = Consult.Fuel,
-						TaxTime = TaxTimer,
-						RentalTime = RentalTimer
-					})
-				else
-					table.insert(Vehicles,{
-						Model = Model,
-						Name = exports.vrp:VehicleName(Model),
-						Tax = exports.vrp:VehiclePrice(Model) * 0.15,
-						Mode = exports.vrp:VehicleMode(Model),
+						Work = true,
+						Owned = false,
 						Weight = exports.vrp:VehicleWeight(Model),
 						Engine = 100,
 						Body = 100,
 						Fuel = 100,
+						Plate = nil,
+						Health = 100,
 						TaxTime = "30 Dias e 29 Horas",
 						RentalTime = false
 					})
@@ -424,12 +436,14 @@ function Creative.Vehicles(Number)
 		end
 
 		local Consult = vRP.Query("vehicles/UserVehicles",{ Passport = Passport })
+
+		local Plates = {}
+		local PlateRows = exports.oxmysql:query_async("SELECT Vehicle, Plate FROM vehicles WHERE Passport = @Passport",{ Passport = Passport })
+		for _,PlateRow in pairs(PlateRows or {}) do
+			Plates[PlateRow.Vehicle] = PlateRow.Plate
+		end
+
 		for _,v in pairs(Consult) do
-			-- Só mostra o veículo na garagem onde ele está salvo (campo Save):
-			-- se o carro está salvo na garagem 1, ele só aparece na garagem 1.
-			-- Veículo sem Save (nunca guardado) continua aparecendo em todas as
-			-- garagens (comportamento antigo). tostring() cobre valor numérico
-			-- ou string no banco; aceita também a coluna em minúsculo (save).
 			local Saved = v.Save or v.save
 			if Saved then
 				Saved = tostring(Saved):gsub("%s+","")
@@ -437,31 +451,38 @@ function Creative.Vehicles(Number)
 
 			if exports.vrp:VehicleExist(v.Vehicle) and not v.Work and (not Saved or Saved == Number) then
 				local TaxTimer,RentalTimer = false,false
+				local VehiclePlate = Plates[v.Vehicle] or v.Plate or v.plate
 
-				if v.Tax > os.time() then
-					TaxTimer = CompleteTimers(v.Tax - os.time())
-				end
-
-				if v.Rental ~= 0 then
-					if v.Rental > os.time() then
-						RentalTimer = CompleteTimers(v.Rental - os.time())
-					else
-						RentalTimer = "Vencido"
+				-- Veículo fora da garagem (spawnado no mundo): o card fica oculto
+				if not Spawn[VehiclePlate] then
+					if v.Tax > os.time() then
+						TaxTimer = CompleteTimers(v.Tax - os.time(),true)
 					end
-				end
 
-				table.insert(Vehicles,{
-					Model = v.Vehicle,
-					Name = exports.vrp:VehicleName(v.Vehicle),
-					Tax = exports.vrp:VehiclePrice(v.Vehicle) * 0.15,
-					Mode = exports.vrp:VehicleMode(v.Vehicle),
-					Weight = v.Weight,
-					Engine = v.Engine / 10,
-					Body = v.Body / 10,
-					Fuel = v.Fuel,
-					TaxTime = TaxTimer,
-					RentalTime = RentalTimer
-				})
+					if v.Rental ~= 0 then
+						if v.Rental > os.time() then
+							RentalTimer = CompleteTimers(v.Rental - os.time(),true)
+						else
+							RentalTimer = "Vencido"
+						end
+					end
+
+					table.insert(Vehicles,{
+						Model = v.Vehicle,
+						Name = exports.vrp:VehicleName(v.Vehicle),
+						Tax = exports.vrp:VehiclePrice(v.Vehicle) * 0.15,
+						Mode = exports.vrp:VehicleMode(v.Vehicle),
+						Work = false,
+						Weight = v.Weight,
+						Engine = v.Engine / 10,
+						Body = v.Body / 10,
+						Fuel = v.Fuel,
+						Plate = VehiclePlate,
+						Health = (v.Health or 1000) / 10,
+						TaxTime = TaxTimer,
+						RentalTime = RentalTimer
+					})
+				end
 			end
 		end
 	end
@@ -481,7 +502,9 @@ AddEventHandler("garages:Sell",function(Name)
 
 	local Mode = exports.vrp:VehicleMode(Name)
 	local Class = exports.vrp:VehicleClass(Name)
-	if Mode == "Work" or Mode == "Rental" or Class == "Races" then
+	-- Veículos de serviço (Mode == "Work") também podem ser vendidos: a venda
+	-- continua exigindo registro do veículo para o jogador (SelectVehicle abaixo).
+	if Mode == "Rental" or Class == "Races" then
 		return false
 	end
 
@@ -499,7 +522,8 @@ AddEventHandler("garages:Sell",function(Name)
 			vRP.RemSrvData("LsCustoms:"..Passport..":"..Name)
 			vRP.RemSrvData("Trunkchest:"..Passport..":"..Name)
 			vRP.Query("vehicles/removeVehicles",{ Passport = Passport, Vehicle = Name })
-			TriggerClientEvent("Notify",source,VehicleName,"Veículo vendido com sucesso.","verde",5000)
+		else
+			TriggerClientEvent("Notify",source,"Aviso","Não foi possível vender este veículo.","amarelo",5000)
 		end
 	end
 
@@ -587,6 +611,38 @@ AddEventHandler("garages:Tax",function(Name)
 		TriggerClientEvent("Notify",source,"Sucesso","Pagamento concluído.","verde",5000)
 	else
 		TriggerClientEvent("Notify",source,"Aviso","Dinheiro insuficiente.","amarelo",5000)
+	end
+end)
+-----------------------------------------------------------------------------------------------------------------------------------------
+-- GARAGES:MECHANIC
+-----------------------------------------------------------------------------------------------------------------------------------------
+RegisterServerEvent("garages:Mechanic")
+AddEventHandler("garages:Mechanic",function(Name)
+	local source = source
+	local Passport = vRP.Passport(source)
+	if not Passport then
+		return false
+	end
+
+	local Vehicle = vRP.SelectVehicle(Passport,Name)
+	if not Vehicle then
+		return false
+	end
+
+	TriggerClientEvent("garages:Close",source)
+
+	if vRP.Request(source,"Garagem","Deseja realmente chamar um mecânico?") then
+		local OK,Users = pcall(vRP.Users)
+		if OK and type(Users) == "table" then
+			local CallerName = vRP.FullName(Passport) or "Alguém"
+			for UserPassport,UserSource in pairs(Users) do
+				if UserPassport ~= Passport and vRP.HasService(UserPassport,"Mecanico") then
+					TriggerClientEvent("Notify",UserSource,"Mecânico","<b>"..CallerName.."</b> solicitou um mecânico na garagem.","amarelo",5000)
+				end
+			end
+		end
+
+		TriggerClientEvent("Notify",source,"Sucesso","Solicitação enviada. Um mecânico foi notificado.","verde",5000)
 	end
 end)
 -----------------------------------------------------------------------------------------------------------------------------------------
@@ -884,6 +940,11 @@ AddEventHandler("garages:Key",function(entityData)
 		return false
 	end
 
+	if not vRP.HasService(Passport,"Bennys") then
+		TriggerClientEvent("Notify",source,"Aviso","Você não possui permissão de mecânico para criar chaves.","vermelho",5000)
+		return false
+	end
+
 	local Plate = entityData[1]
 	local Network = entityData[4]
 	local Entitys = NetworkGetEntityFromNetworkId(Network)
@@ -894,58 +955,19 @@ AddEventHandler("garages:Key",function(entityData)
 	local State = Entity(Entitys).state
 	if State and State.Lockpick == Passport then
 		if exports.vrp:VehicleClass(entityData[2]) ~= "Bicicletas" then
+			if not vRP.TakeItem(Passport,"vehiclekeybuild",1,true) then
+				TriggerClientEvent("Notify",source,"Atenção","Você precisa do item <b>Sistema de Chave Reserva</b> para criar a chave.","amarelo",5000)
+				return false
+			end
+
 			vRP.GiveItem(Passport,"vehiclekey-"..os.time().."-"..Plate,1,true)
+			TriggerClientEvent("Notify",source,"Sucesso","Chave reserva criada com sucesso.","verde",5000)
+
+			exports.discord:Embed("Vehicles",("**[CHAVE RESERVA]:** %s\n**[PASSAPORTE]:** %s\n**[MECÂNICO]:** %s\n**[VEÍCULO]:** %s\n**[PLACA]:** %s"):format(exports.vrp:VehicleName(entityData[2]),Passport,vRP.FullName(Passport) or "Desconhecido",exports.vrp:VehicleName(entityData[2]),Plate))
 		end
 	end
 end)
 -----------------------------------------------------------------------------------------------------------------------------------------
--- GARAGES:LOCK
------------------------------------------------------------------------------------------------------------------------------------------
-RegisterServerEvent("garages:Lock")
-AddEventHandler("garages:Lock",function(Network)
-	local source = source
-	local Passport = vRP.Passport(source)
-	if not Passport then
-		return false
-	end
-
-	local Entitys = NetworkGetEntityFromNetworkId(Network)
-	if not DoesEntityExist(Entitys) then
-		return false
-	end
-
-	local State = Entity(Entitys).state
-	if State and State.Lockpick == Passport then
-		TriggerEvent("garages:LockVehicle",source,Network)
-	end
-end)
------------------------------------------------------------------------------------------------------------------------------------------
--- GARAGES:LOCKVEHICLE
------------------------------------------------------------------------------------------------------------------------------------------
-AddEventHandler("garages:LockVehicle",function(source,Network)
-	local Vehicle = NetworkGetEntityFromNetworkId(Network)
-	if not DoesEntityExist(Vehicle) then
-		return false
-	end
-
-	local DoorStatus = tonumber(GetVehicleDoorLockStatus(Vehicle)) or 0
-
-	if DoorStatus <= 1 then
-		TriggerClientEvent("Notify:Lock",source,"locked")
-		TriggerClientEvent("sounds:Private",source,"locked",0.5)
-		SetVehicleDoorsLocked(Vehicle,2)
-	else
-		TriggerClientEvent("Notify:Lock",source,"unlocked")
-		TriggerClientEvent("sounds:Private",source,"unlocked",0.5)
-		SetVehicleDoorsLocked(Vehicle,1)
-	end
-
-	if not vRP.InsideVehicle(source) then
-		vRPC.playAnim(source,true,{"anim@mp_player_intmenu@key_fob@","fob_click_fp"},false)
-		Wait(350)
-		vRPC.stopAnim(source)
-	end
-end)
 -----------------------------------------------------------------------------------------------------------------------------------------
 -- DELETE
 -----------------------------------------------------------------------------------------------------------------------------------------
