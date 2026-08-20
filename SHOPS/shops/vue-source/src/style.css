@@ -26,8 +26,9 @@
        (vrp/config/Global.lua) ou derivadas da cor principal do tema.
        Defaults na mesma família do --main (#66ad43): compra = main,
        categoria = main ~12% mais claro. Nada de azul/roxo fora do tema. */
-    --shopBuy: 102 173 67;
-    --shopBuyHover: 120 183 90;
+    --mainDark: 82 143 54;
+    --shopBuy: 82 143 54;
+    --shopBuyHover: 102 173 67;
     --shopCategory: 120 183 90;
     --shopCategoryHover: 136 192 110;
 }
@@ -160,18 +161,20 @@ body {
    uma área vaze para as outras. */
 .cards-scroll {
     overscroll-behavior: contain;
+    scroll-behavior: smooth;
 }
 .cards-scroll::-webkit-scrollbar {
-    width: 6px;
+    width: 4px;
+    margin: 0 2px;
 }
 .cards-scroll::-webkit-scrollbar-track {
     background: transparent;
 }
 .cards-scroll::-webkit-scrollbar-thumb {
-    background: rgb(var(--main) / 0.35);
+    background: rgb(var(--main) / 0.2);
     border-radius: 9999px;
 }
 .cards-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--main) / 0.55);
+    background: rgb(var(--main) / 0.35);
 }
 

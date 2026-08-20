@@ -66,6 +66,8 @@ export const normalizeVehicle = (vehicle, index) => ({
 
 export const useGarageStore = defineStore("garage", {
   state: () => ({
+    name: "",
+    number: "",
     vehicles: [],
     selectedVehicleId: null,
     search: "",
@@ -85,7 +87,9 @@ export const useGarageStore = defineStore("garage", {
     },
   },
   actions: {
-    setVehicles(list) {
+    setVehicles(list, name, number) {
+      this.name = name || "";
+      this.number = number || "";
       this.vehicles = (list || []).map(normalizeVehicle);
       this.selectedVehicleId = null;
       this.search = "";

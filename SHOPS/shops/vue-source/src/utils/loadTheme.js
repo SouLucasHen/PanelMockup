@@ -6,6 +6,10 @@ import setTheme from "./setTheme";
  * setTheme — mesmo padrão da HUD. Usa a cor principal (response.main) e as
  * cores da loja (response.shop, de vrp/config/Global.lua).
  * Sem resposta, os defaults do CSS permanecem.
+ *
+ * Também extrai o símbolo da moeda (response.currency) para que a interface
+ * use o mesmo símbolo configurado em vrp/config/Global.lua (Currency = "$"
+ * por padrão). O consumidor (App.vue) salva no settings.store.currency.
  */
 export default async function loadTheme() {
   const response = await fetchNui("Theme");

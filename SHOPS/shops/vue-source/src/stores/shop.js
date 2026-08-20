@@ -12,11 +12,15 @@ import { defineStore, acceptHMRUpdate } from "pinia";
 export const normalizeItem = (item) => ({
   key: item.Item,
   name: item.Name,
+  description: item.Description || "",
+  type: item.Type || "Comum",
   price: item.Price,
   weight: item.Weight,
   image: item.Image,
   // Max = limite de manuseio do item (null = sem limite definido)
   max: item.Max || null,
+  // Durability = durabilidade em horas (null = sem durabilidade)
+  durability: item.Durability || null,
   // Current = quanto o jogador já carrega do item no momento da abertura
   current: item.Current || 0,
   // Rarity = raridade do item (vrp/config/Item.lua) — "normal" quando não
@@ -33,6 +37,13 @@ export const useShopStore = defineStore("shop", {
     // Lojas Consume trocam por um item (ex.: dirtydollar, ironfilings) — o nome
     // vem no payload para o botão de pagamento. Vazio para os demais tipos.
     itemName: "",
+    // Peso atual e máximo do jogador (enviados pelo client no payload Open)
+    weight: 0,
+    maxWeight: 0,
+    // Peso do item de troca (Consume) — usado para calcular peso líquido
+    itemWeight: 0,
+    // GlobalState.Blackout — quando true, pagamento via banco é desativado
+    blackout: false,
     items: [],
     // Carrinho: { [key]: { key, name, price, image, rarity, amount } }
     cart: {},
@@ -76,6 +87,29 @@ export const useShopStore = defineStore("shop", {
       if (!item || !item.max) return Infinity;
       return Math.max(item.max - item.current, 0);
     },
+    // Custo total do carrinho em unidades do item de troca (Consume)
+    cartConsumeTotal(state) {
+      return Object.values(state.cart).reduce(
+        (total, entry) => total + entry.price * entry.amount,
+        0,
+      );
+    },
+    // Peso líquido: peso dos itens recebidos menos peso dos itens entregues
+    // Em lojas Consume, o jogador entrega itemWeight × cartConsumeTotal
+    cartNetWeight(state) {
+      if (state.type !== "Consume" || !state.itemWeight) {
+        return Object.values(state.cart).reduce(
+          (total, entry) => total + (entry.weight ?? 0) * entry.amount,
+          0,
+        );
+      }
+      const received = Object.values(state.cart).reduce(
+        (total, entry) => total + (entry.weight ?? 0) * entry.amount,
+        0,
+      );
+      const given = state.itemWeight * state.cartConsumeTotal;
+      return received - given;
+    },
     // Se ainda é possível adicionar mais unidades do item ao carrinho
     // (considerando o que já está no carrinho).
     canAddMore: (state) => (key) => {
@@ -112,6 +146,10 @@ export const useShopStore = defineStore("shop", {
       this.mode = catalog.Mode || "Buy";
       this.type = catalog.Type || "Cash";
       this.itemName = catalog.ItemName || "";
+      this.weight = catalog.Weight || 0;
+      this.maxWeight = catalog.MaxWeight || 0;
+      this.itemWeight = catalog.ItemWeight || 0;
+      this.blackout = catalog.Blackout || false;
       this.items = (catalog.Items || []).map(normalizeItem);
 
       // Garante que o carrinho restaurado respeite o limite do item: o jogador

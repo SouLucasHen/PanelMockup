@@ -18,6 +18,7 @@ export default {
       },
       colors: {
         main: "rgb(var(--main) / <alpha-value>)",
+        mainDark: "rgb(var(--mainDark) / <alpha-value>)",
         mainHover: "rgb(var(--mainHover) / <alpha-value>)",
         mainText: "rgb(var(--mainText) / <alpha-value>)",
         from: "rgb(var(--from) / <alpha-value>)",

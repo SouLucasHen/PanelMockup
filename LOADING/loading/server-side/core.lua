@@ -10,13 +10,16 @@ AddEventHandler("playerConnecting",function(_,_,deferrals)
 		playlist = Playlist,
 		theme = Theme,
 		autoplay = Autoplay,
+		autoplayInterval = AutoplayInterval,
 		shortcuts = Shortcuts,
 		keybindings = Keybindings,
 		progress = Progress,
 		classification = Classification,
 		classificationAge = ClassificationAge,
 		classificationTitle = ClassificationTitle,
-		classificationText = ClassificationText
+		classificationText = ClassificationText,
+		tips = Tips,
+		tipsSlides = TipsSlides
 	})
 
 	deferrals.done()

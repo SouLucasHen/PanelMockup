@@ -45,6 +45,12 @@ export default function setTheme(mainColor, shopColors = {}, rarityColors = {}) 
     // Cor principal
     root.style.setProperty("--main", toVar(rgb));
 
+    // Dark: escurece ~20% (usado nos botões + e pagamento para melhor contraste)
+    root.style.setProperty(
+      "--mainDark",
+      toVar({ r: Math.round(r * 0.80), g: Math.round(g * 0.80), b: Math.round(b * 0.80) }),
+    );
+
     // Hover: escurece ~25%
     root.style.setProperty(
       "--mainHover",
@@ -67,7 +73,8 @@ export default function setTheme(mainColor, shopColors = {}, rarityColors = {}) 
     category: "shopCategory",
   };
 
-  const buy = (shopColors.buy && hexToRgb(shopColors.buy)) || rgb;
+  const buyRaw = (shopColors.buy && hexToRgb(shopColors.buy)) || rgb;
+  const buy = buyRaw ? { r: Math.round(buyRaw.r * 0.80), g: Math.round(buyRaw.g * 0.80), b: Math.round(buyRaw.b * 0.80) } : null;
   const category = (shopColors.category && hexToRgb(shopColors.category)) || (rgb && lighten(rgb, 0.12));
 
   for (const [key, varName] of Object.entries(shopVars)) {

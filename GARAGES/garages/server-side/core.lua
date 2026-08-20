@@ -368,9 +368,9 @@ function Creative.Vehicles(Number)
 		for _,Model in pairs(Works[Selected]) do
 			if exports.vrp:VehicleExist(Model) then
 				local TaxTimer,RentalTimer = false,false
-				local Consult = vRP.SelectVehicle(Passport,Model)					if Consult then
+				local Consult = vRP.SelectVehicle(Passport,Model)
+				if Consult then
 						local ConsultPlate = Consult.Plate or Consult.plate
-						-- Veículo fora da garagem (spawnado no mundo): o card fica oculto
 						if not Spawn[ConsultPlate] then
 							if Consult.Tax > os.time() then
 								TaxTimer = CompleteTimers(Consult.Tax - os.time(),true)
@@ -453,7 +453,6 @@ function Creative.Vehicles(Number)
 				local TaxTimer,RentalTimer = false,false
 				local VehiclePlate = Plates[v.Vehicle] or v.Plate or v.plate
 
-				-- Veículo fora da garagem (spawnado no mundo): o card fica oculto
 				if not Spawn[VehiclePlate] then
 					if v.Tax > os.time() then
 						TaxTimer = CompleteTimers(v.Tax - os.time(),true)
@@ -487,7 +486,7 @@ function Creative.Vehicles(Number)
 		end
 	end
 
-	return Vehicles
+	return { Name = Garage.Name, Number = Number, Vehicles = Vehicles }
 end
 -----------------------------------------------------------------------------------------------------------------------------------------
 -- GARAGES:SELL
@@ -502,8 +501,6 @@ AddEventHandler("garages:Sell",function(Name)
 
 	local Mode = exports.vrp:VehicleMode(Name)
 	local Class = exports.vrp:VehicleClass(Name)
-	-- Veículos de serviço (Mode == "Work") também podem ser vendidos: a venda
-	-- continua exigindo registro do veículo para o jogador (SelectVehicle abaixo).
 	if Mode == "Rental" or Class == "Races" then
 		return false
 	end
@@ -945,29 +942,63 @@ AddEventHandler("garages:Key",function(entityData)
 		return false
 	end
 
-	local Plate = entityData[1]
-	local Network = entityData[4]
+	local Plate = entityData and entityData[1]
+	local Model = entityData and entityData[2]
+	local Network = entityData and entityData[4]
+	if not Plate or not Model or not Network then
+		return false
+	end
+
 	local Entitys = NetworkGetEntityFromNetworkId(Network)
 	if not DoesEntityExist(Entitys) then
 		return false
 	end
 
-	local State = Entity(Entitys).state
-	if State and State.Lockpick == Passport then
-		if exports.vrp:VehicleClass(entityData[2]) ~= "Bicicletas" then
-			if not vRP.TakeItem(Passport,"vehiclekeybuild",1,true) then
-				TriggerClientEvent("Notify",source,"Atenção","Você precisa do item <b>Sistema de Chave Reserva</b> para criar a chave.","amarelo",5000)
-				return false
-			end
-
-			vRP.GiveItem(Passport,"vehiclekey-"..os.time().."-"..Plate,1,true)
-			TriggerClientEvent("Notify",source,"Sucesso","Chave reserva criada com sucesso.","verde",5000)
-
-			exports.discord:Embed("Vehicles",("**[CHAVE RESERVA]:** %s\n**[PASSAPORTE]:** %s\n**[MECÂNICO]:** %s\n**[VEÍCULO]:** %s\n**[PLACA]:** %s"):format(exports.vrp:VehicleName(entityData[2]),Passport,vRP.FullName(Passport) or "Desconhecido",exports.vrp:VehicleName(entityData[2]),Plate))
-		end
+	if exports.vrp:VehicleClass(Model) == "Bicicletas" then
+		return false
 	end
+
+	local PrimaryPlate = Changed[Plate] or Plate
+	local Consult = exports.oxmysql:query_async("SELECT Passport FROM vehicles WHERE Plate = @Plate LIMIT 1",{ Plate = PrimaryPlate })
+	local OwnerPassport = Consult and Consult[1] and Consult[1].Passport
+	if not OwnerPassport then
+		TriggerClientEvent("Notify",source,"Atenção","Este veículo não possui placa registrada. Só é possível criar cópias para veículos comprados.","amarelo",5000)
+		return false
+	end
+
+	local OK,Users = pcall(vRP.Users)
+	local OwnerSource = OK and type(Users) == "table" and Users[OwnerPassport] or 0
+	if not OwnerSource or OwnerSource == 0 then
+		TriggerClientEvent("Notify",source,"Atenção","O dono do veículo está offline, não é possível criar a chave cópia.","amarelo",5000)
+		return false
+	end
+
+	local MechanicName = vRP.FullName(Passport) or "Desconhecido"
+	local OwnerName = vRP.FullName(OwnerPassport) or "Desconhecido"
+	local VehicleName = exports.vrp:VehicleName(Model)
+
+	if not vRP.Request(OwnerSource,"Garagem",("O mecânico <b>%s</b> deseja criar uma chave cópia do seu veículo <b>%s</b> (placa <b>%s</b>). Você permite?"):format(MechanicName,VehicleName,PrimaryPlate)) then
+		TriggerClientEvent("Notify",source,"Atenção","O dono do veículo <b>"..OwnerName.."</b> recusou a criação da chave cópia.","amarelo",5000)
+		TriggerClientEvent("Notify",OwnerSource,"Atenção","Você recusou a criação da chave cópia do seu veículo.","amarelo",5000)
+		return false
+	end
+
+	if not vRP.Task(source,5,1500) then
+		TriggerClientEvent("Notify",source,"Atenção","Tarefa cancelada, a chave cópia não foi criada.","amarelo",5000)
+		return false
+	end
+
+	if not vRP.TakeItem(Passport,"vehiclekeybuild",1,true) then
+		TriggerClientEvent("Notify",source,"Atenção","Você precisa do item <b>Sistema de Chave Reserva</b> para criar a chave.","amarelo",5000)
+		return false
+	end
+
+	vRP.GiveItem(OwnerPassport,"vehiclekey-"..os.time().."-"..Plate,1,true)
+	TriggerClientEvent("Notify",source,"Sucesso","Chave reserva criada e enviada para o inventário do dono.","verde",5000)
+	TriggerClientEvent("Notify",OwnerSource,"Sucesso","O mecânico <b>"..MechanicName.."</b> criou a chave cópia do seu veículo <b>"..VehicleName.."</b>. A chave foi adicionada ao seu inventário.","verde",5000)
+
+	exports.discord:Embed("Vehicles",("**[CHAVE RESERVA]:** %s\n**[DONO]:** %s\n**[MECÂNICO]:** %s\n**[VEÍCULO]:** %s\n**[PLACA]:** %s"):format(VehicleName,OwnerName,MechanicName,VehicleName,PrimaryPlate))
 end)
------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------------------------------------------
 -- DELETE
 -----------------------------------------------------------------------------------------------------------------------------------------
@@ -1006,8 +1037,6 @@ function Creative.Delete(Network,Doors,Tyres,Plate,Garage)
 
 			vRP.Update("vehicles/updateVehicles",{ Passport = Passport, Vehicle = Name, Nitro = Nitro, Engine = math.floor(Engine), Body = math.floor(Body), Health = math.floor(Health), Fuel = Fuel, Doors = DoorsJson, Windows = WindowsJson, Tyres = TyresJson })
 
-			-- Veículo guardado pelo painel (Garage preenchido): grava a garagem
-			-- no campo Save. O /dv não envia Garage e não altera o Save.
 			if Garage then
 				exports.oxmysql:query_async("UPDATE vehicles SET Save = @Save WHERE Passport = @Passport AND Vehicle = @Vehicle",{ Save = Garage, Passport = Passport, Vehicle = Name })
 			end

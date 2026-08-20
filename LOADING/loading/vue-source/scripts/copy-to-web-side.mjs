@@ -28,6 +28,7 @@ if (!existsSync(DIST)) {
 for (const file of ["index.html", "script.js", "style.css"]) {
   rmSync(join(TARGET, file), { force: true });
 }
+// Não remove as pastas de mídia (audio/, video/, tips/) — são mantidas no web-side.
 
 cpSync(DIST, TARGET, { recursive: true });
 

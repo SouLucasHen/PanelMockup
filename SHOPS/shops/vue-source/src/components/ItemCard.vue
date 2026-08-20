@@ -1,20 +1,32 @@
 <script setup>
 import { computed } from "vue";
 import { useShopStore } from "@stores/shop";
+import { useSettingsStore } from "@stores/settings";
 import itemImage from "@utils/itemImage";
 import formatPrice from "@utils/formatPrice";
-import formatWeight from "@utils/formatWeight";
 import rarityStyle from "@utils/rarity";
-import Plus from "@icons/Plus.vue";
+import Cart from "@icons/Cart.vue";
+import Swap from "@icons/Swap.vue";
+import Gemstone from "@icons/Gemstone.vue";
+import Info from "@icons/Info.vue";
 
 const props = defineProps({
   item: { type: Object, required: true },
 });
 
 const shop = useShopStore();
+const settings = useSettingsStore();
 
-const addToCart = () => {
-  shop.addToCart(props.item);
+// ==================== POPUP DE DETALHES ====================
+// Abre o popup de informações do item no catálogo.
+const emit = defineEmits(["info", "add"]);
+
+const openInfo = () => {
+  emit("info", props.item);
+};
+
+const handleAdd = () => {
+  emit("add", props.item);
 };
 
 // ==================== RARIDADE (tint de fundo) ====================
@@ -32,22 +44,12 @@ const cardStyle = computed(() => rarityStyle(props.item.rarity));
        background mais escuro com Preço/Peso. -->
   <div
     :style="cardStyle"
-    class="group relative flex w-full flex-col items-center gap-3 rounded-md border border-white/10 bg-white/[0.02] p-2.5 transition-all duration-200 hover:border-main/60 hover:bg-white/[0.04]"
+    class="group relative flex w-full flex-col items-center gap-3 rounded-md ring-1 ring-white/10 bg-white/[0.02] p-2.5 transition-all duration-200 hover:ring-main/60 hover:bg-white/[0.04]"
   >
-    <!-- Topo: nome do item à esquerda + badge verde (adicionar) à direita -->
-    <div class="flex w-full items-center justify-between gap-2">
-      <p class="min-w-0 truncate text-left text-[0.75rem] font-semibold leading-tight text-white">
-        {{ item.name }}
-      </p>
-      <button
-        @click="addToCart"
-        :disabled="!shop.canAddMore(item.key)"
-        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-[0.25rem] bg-main text-white transition-colors hover:bg-mainHover disabled:cursor-default disabled:bg-main/25 disabled:hover:bg-main/25"
-        aria-label="Adicionar ao carrinho"
-      >
-        <Plus class="h-3.5 w-3.5" />
-      </button>
-    </div>
+    <!-- Topo: nome do item -->
+    <p class="w-full min-w-0 truncate text-left text-[0.75rem] font-semibold leading-tight text-white">
+      {{ item.name }}
+    </p>
 
     <!-- Imagem central: ocupa a maior parte do slot -->
     <img
@@ -56,18 +58,36 @@ const cardStyle = computed(() => rarityStyle(props.item.rarity));
       class="w-[62%] shrink-0 aspect-square object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.6)]"
     />
 
-    <!-- Segundo background (mais escuro): Preço | valor e Peso | peso. O
-         limite de manuseio (Max em vrp/config/Item.lua) não é exibido — ele
-         apenas trava o botão de adicionar quando o carrinho atinge o máximo. -->
-    <div class="mt-auto flex w-full flex-col gap-2 rounded-md bg-black/30 p-2.5 ring-1 ring-white/10">
-      <div class="flex items-center justify-between gap-2">
-        <span class="shrink-0 text-[0.625rem] font-medium uppercase leading-none tracking-wide text-white/50">Preço</span>
-        <span class="min-w-0 truncate text-[0.75rem] font-semibold leading-tight text-[rgb(var(--common))]">$ {{ formatPrice(item.price) }}</span>
+    <!-- Base: botões (esquerda) + preço (direita) -->
+    <div class="mt-auto flex w-full items-center justify-between">
+      <div class="flex items-center gap-1.5">
+        <!-- Detalhes -->
+        <button
+          @click="openInfo"
+          class="flex h-7 w-7 items-center justify-center rounded-[0.25rem] bg-white/10 text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+          aria-label="Ver detalhes do item"
+        >
+          <Info class="h-3.5 w-3.5" />
+        </button>
+
+        <!-- Adicionar ao carrinho / trocar -->
+        <button
+          @click="handleAdd"
+          :disabled="!shop.canAddMore(item.key)"
+          class="flex h-7 w-7 items-center justify-center rounded-[0.25rem] bg-shopBuy text-white transition-colors hover:bg-shopBuyHover disabled:cursor-default disabled:bg-shopBuy/25 disabled:hover:bg-shopBuy/25"
+          :aria-label="shop.type === 'Consume' ? 'Adicionar para troca' : 'Adicionar ao carrinho'"
+        >
+          <Swap v-if="shop.type === 'Consume'" class="h-3.5 w-3.5" />
+          <Cart v-else class="h-3.5 w-3.5" />
+        </button>
       </div>
-      <div class="flex items-center justify-between gap-2">
-        <span class="shrink-0 text-[0.625rem] font-medium uppercase leading-none tracking-wide text-white/50">Peso</span>
-        <span class="min-w-0 truncate text-[0.75rem] font-semibold leading-tight text-white">{{ formatWeight(item.weight) }}</span>
-      </div>
+
+      <!-- Preço -->
+      <span class="flex items-center gap-1 text-[0.75rem] font-semibold text-[rgb(var(--common))] truncate">
+        <template v-if="shop.type === 'Consume'">x{{ formatPrice(item.price) }}</template>
+        <template v-else-if="shop.type === 'Gemstone'"><Gemstone class="w-3 h-3 shrink-0 text-[rgb(var(--common))]" /> {{ formatPrice(item.price) }}</template>
+        <template v-else>{{ settings.currency }} {{ formatPrice(item.price) }}</template>
+      </span>
     </div>
   </div>
 </template>

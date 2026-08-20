@@ -49,6 +49,7 @@ if (import.meta.env.DEV && isBrowser()) {
       loading: { mode: "dark", model: 2 },
     },
     autoplay: true,
+    autoplayInterval: 5000,
     shortcuts: true,
     keybindings: { H: "Hensa" },
     progress: true,
@@ -56,6 +57,14 @@ if (import.meta.env.DEV && isBrowser()) {
     classificationAge: 18,
     classificationTitle: "CLASSIFICAÇÃO INDICATIVA",
     classificationText: "Violência, Drogas, Conteúdo sexual",
+    tips: true,
+    tipsSlides: [
+      {
+        image: "/tips/HensaTips.png",
+        title: "Hensa Studio",
+        description: "Traga seu servidor para as mãos de quem desenvolve os sistemas e resolve seus problemas!",
+      },
+    ],
   };
 
   // ==================== PROGRESSO SIMULADO ====================

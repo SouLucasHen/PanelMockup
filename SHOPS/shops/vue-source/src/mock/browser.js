@@ -54,15 +54,17 @@ if (import.meta.env.DEV && isBrowser()) {
       return {};
     },
     Checkout: (body) => {
-      console.info("[mock] Checkout (realizar compra):", body);
       // Mesmo comportamento do client (client-side/core.lua): a interface
       // fecha na hora do clique para confirmar a compra; sucesso true limpa
       // o carrinho (que é resetado ao reabrir a loja)
       send("Close");
       return { Success: true };
     },
-    // Mesma convenção da HUD: o tema vem do resource "vrp"
-    Theme: () => ({ main: THEME, shop: SHOP_THEME, ...RARITY_THEME }),
+    // Mesma convenção da HUD: o tema vem do resource "vrp".
+    // currency = Theme.currency de vrp/config/Global.lua (Currency = "$").
+    Theme: () => ({ main: THEME, currency: "$", shop: SHOP_THEME, ...RARITY_THEME }),
+    // Peso atual e máximo do jogador (enviado pelo client no payload Open)
+    Weight: () => ({ Weight: 12.5, MaxWeight: 50 }),
   };
 
   window.fetch = async (input, init) => {
@@ -79,61 +81,98 @@ if (import.meta.env.DEV && isBrowser()) {
     return json(data);
   };
 
-  // ==================== SEED INICIAL ====================
-  // Mesma convenção da HUD: { name (Action), Payload }.
+  // ==================== SEEDS — Lojas de teste ====================
   const send = (action, data) => window.postMessage({ name: action, Payload: data }, "*");
 
-  // Seed no MESMO formato que o servidor envia: { Name, Description, Mode, Type,
-  // Items = { { Item, Name, Price, Weight, Image } } } — gerado a partir da List do
-  // Megamall em shared-side/shared.lua, com Image sendo o Index do item
-  // (vrp/config/Item.lua), servido em nui://vrp/config/inventory/<Index>.png e
-  // Weight o peso em kg por unidade (mesma fonte do Item.lua).
-  const open = () => {
+  // Itens compartilhados entre as lojas
+  const COMMON_ITEMS = [
+    { Item: "bait", Name: "Isca", Description: "Isca natural para atrair peixes.", Type: "Comum", Price: 5, Weight: 0.25, Image: "bait" },
+    { Item: "notepad", Name: "Bloco de Notas", Description: "Bloco de notas compacto.", Type: "Comum", Price: 10, Weight: 0.0, Image: "notepad" },
+    { Item: "suitcase", Name: "Mala de Dinheiro", Description: "Mala reforçada para transportar dinheiro.", Type: "Comum", Price: 275, Weight: 1.0, Image: "suitcase" },
+    { Item: "alliance", Name: "Aliança", Description: "Aliança simples e elegante.", Type: "Comum", Price: 525, Weight: 0.0, Image: "alliance" },
+    { Item: "axe", Name: "Machadinha", Description: "Machadinha robusta para cortar lenha.", Type: "Comum", Price: 1225, Weight: 2.75, Image: "axe" },
+    { Item: "pickaxe", Name: "Picareta", Description: "Picareta resistente para mineração.", Type: "Comum", Price: 1225, Weight: 2.75, Image: "pickaxe" },
+  ];
+
+  const WEAPONS = [
+    { Item: "WEAPON_BRICK", Name: "Tijolo", Description: "Arma improvisada.", Type: "Armamento", Price: 25, Weight: 0.75, Image: "brick" },
+    { Item: "WEAPON_SHOES", Name: "Tênis", Description: "Tênis velho para arremesso.", Type: "Armamento", Price: 25, Weight: 0.755, Image: "shoes" },
+    { Item: "WEAPON_HATCHET", Name: "Machado", Description: "Machado de combate.", Type: "Armamento", Price: 975, Weight: 1.5, Image: "hatchet", Rarity: "rare" },
+  ];
+
+  const CONSUMABLES = [
+    { Item: "scuba", Name: "Roupa de Mergulho", Description: "Equipamento para mergulho autônomo.", Type: "Consumível", Price: 975, Weight: 2.25, Image: "scuba", Max: 3, Durability: 720, Rarity: "legendary" },
+    { Item: "GADGET_PARACHUTE", Name: "Paraquedas", Description: "Paraquedas de reserva.", Type: "Consumível", Price: 225, Weight: 2.25, Image: "parachute" },
+    { Item: "fishingrod", Name: "Vara de Madeira", Description: "Vara de pescar artesanal.", Type: "Consumível", Price: 1225, Weight: 2.75, Image: "fishingrod", Durability: 720 },
+  ];
+
+  const CLONES = [
+    { Item: "tomatoclone_0", Name: "Clonagem de Tomate", Description: "Clone genético de tomate.", Type: "Comum", Price: 3000, Weight: 0.05, Image: "clone" },
+    { Item: "passionclone_0", Name: "Clonagem de Maracujá", Description: "Clone genético de maracujá.", Type: "Comum", Price: 3000, Weight: 0.05, Image: "clone" },
+    { Item: "appleclone_0", Name: "Clonagem de Maçã", Description: "Clone genético de maçã.", Type: "Comum", Price: 3000, Weight: 0.05, Image: "clone" },
+  ];
+
+  // ==================== LOJA CASH (Megamall) ====================
+  const openCash = () => {
     send("Open", {
-      // Key = chave da loja na List (como o client envia) — separa o carrinho
-      // de cada loja; Mode é sempre "Buy"/"Sell" e não identifica a loja.
-      Key: "Megamall",
-      Name: "Megamall",
+      Key: "Megamall", Name: "Megamall",
       Description: "A loja de departamentos completa da cidade.",
-      Mode: "Buy",
-      Type: "Cash",
+      Mode: "Buy", Type: "Cash",
+      Weight: 12.5, MaxWeight: 50, Blackout: false,
+      Items: [...COMMON_ITEMS, ...WEAPONS, ...CONSUMABLES, ...CLONES],
+    });
+  };
+
+  // ==================== LOJA GEMSTONE (Banned) ====================
+  const openGemstone = () => {
+    send("Open", {
+      Key: "Banned", Name: "Banidos",
+      Description: "Itens restritos disponíveis mediante autorização.",
+      Mode: "Buy", Type: "Gemstone",
+      Weight: 12.5, MaxWeight: 50, Blackout: false,
       Items: [
-        // Max = quantidade máxima de manuseio (vrp/config/Item.lua), Current =
-        // quanto o jogador já carrega e Rarity (Rarity em vrp/config/Item.lua)
-        // — juntos limitam o carrinho e tingem o fundo do card no dev.
-        { Item: "bait", Name: "Isca", Price: 5, Weight: 0.25, Image: "bait" },
-        { Item: "rope", Name: "Cordas", Price: 925, Weight: 1.75, Image: "rope", Max: 2, Current: 1, Rarity: "rare" },
-        { Item: "scuba", Name: "Roupa de Mergulho", Price: 975, Weight: 2.25, Image: "scuba", Max: 3, Rarity: "legendary" },
-        { Item: "notepad", Name: "Bloco de Notas", Price: 10, Weight: 0.0, Image: "notepad" },
-        { Item: "suitcase", Name: "Mala de Dinheiro", Price: 275, Weight: 1.0, Image: "suitcase" },
-        { Item: "WEAPON_BRICK", Name: "Tijolo", Price: 25, Weight: 0.75, Image: "brick" },
-        { Item: "WEAPON_SHOES", Name: "Tênis", Price: 25, Weight: 0.755, Image: "shoes" },
-        { Item: "WEAPON_ACIDPACKAGE", Name: "Jornal", Price: 10, Weight: 0.75, Image: "newspaper" },
-        { Item: "alliance", Name: "Aliança", Price: 525, Weight: 0.0, Image: "alliance" },
-        { Item: "GADGET_PARACHUTE", Name: "Paraquedas", Price: 225, Weight: 2.25, Image: "parachute" },
-        { Item: "axe", Name: "Machadinha", Price: 1225, Weight: 2.75, Image: "axe" },
-        { Item: "pickaxe", Name: "Picareta", Price: 1225, Weight: 2.75, Image: "pickaxe" },
-        { Item: "fishingrod", Name: "Vara de Madeira", Price: 1225, Weight: 2.75, Image: "fishingrod" },
-        { Item: "emptypurifiedwater", Name: "Galão de Água Vazio", Price: 1275, Weight: 0.75, Image: "emptypurifiedwater" },
-        // Clones são registrados dinamicamente no Item.lua (Clones + Puritys):
-        // Index = "clone" (clone.png) e Weight = 0.05 kg.
-        { Item: "tomatoclone_0", Name: "Clonagem de Tomate", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "passionclone_0", Name: "Clonagem de Maracujá", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "tangeclone_0", Name: "Clonagem de Tangerina", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "orangeclone_0", Name: "Clonagem de Laranja", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "appleclone_0", Name: "Clonagem de Maçã", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "grapeclone_0", Name: "Clonagem de Uva", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "lemonclone_0", Name: "Clonagem de Limão", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "bananaclone_0", Name: "Clonagem de Banana", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "acerolaclone_0", Name: "Clonagem de Acerola", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "strawberryclone_0", Name: "Clonagem de Morango", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "blueberryclone_0", Name: "Clonagem de Blueberry", Price: 3000, Weight: 0.05, Image: "clone" },
-        { Item: "coffeeclone_0", Name: "Clonagem de Café", Price: 3000, Weight: 0.05, Image: "clone" },
+        { Item: "banned_reduce", Name: "Redução de Sentença", Description: "Reduz 1 minuto do tempo restante.", Type: "Consumível", Price: 10, Weight: 0.0, Image: "banned_reduce", Rarity: "common" },
+        { Item: "WEAPON_KATANA", Name: "Katana", Description: "Espada lendária.", Type: "Armamento", Price: 500, Weight: 1.75, Image: "katana", Rarity: "legendary", Durability: 240 },
+        { Item: "gemstone", Name: "Diamante", Description: "Diamante brilhante.", Type: "Consumível", Price: 20, Weight: 0.0, Image: "gemstone", Rarity: "legendary" },
+        { Item: "backpackg", Name: "Mochila Grande", Description: "Mochila de 100Kg.", Type: "Comum", Price: 2000, Weight: 2.5, Image: "backpackg", Rarity: "legendary" },
       ],
     });
   };
 
-  setTimeout(open, 50);
+  // ==================== LOJA CONSUME (Desmanche) ====================
+  // Type: "Consume" = troca por item (não usa dinheiro).
+  // ItemName = nome do item de troca exibido no botão de pagamento.
+  // Price = quantidade do item de troca necessária (sem símbolo $).
+  const openConsume = () => {
+    send("Open", {
+      Key: "Dismantle", Name: "Desmanche",
+      Description: "Troque limas de ferro por materiais de desmanche.",
+      Mode: "Buy", Type: "Consume", ItemName: "Limas de Ferro",
+      Weight: 12.5, MaxWeight: 50, ItemWeight: 0.3, Blackout: false,
+      Items: [
+        { Item: "plastic", Name: "Plástico", Description: "Plástico reciclado para fabricação.", Type: "Comum", Price: 30, Weight: 0.045, Image: "plastic" },
+        { Item: "glass", Name: "Vidro", Description: "Vidro reciclado para fabricação.", Type: "Comum", Price: 30, Weight: 0.045, Image: "glass" },
+        { Item: "rubber", Name: "Borracha", Description: "Borracha reciclada para fabricação.", Type: "Comum", Price: 30, Weight: 0.045, Image: "rubber" },
+        { Item: "aluminum", Name: "Alumínio", Description: "Alumínio reciclado de alta qualidade.", Type: "Comum", Price: 50, Weight: 0.045, Image: "aluminum" },
+        { Item: "copper", Name: "Cobre", Description: "Cobre reciclado de alta qualidade.", Type: "Comum", Price: 50, Weight: 0.045, Image: "copper" },
+      ],
+    });
+  };
+
+  // ==================== LOJA COM BLACKOUT ====================
+  const openBlackout = () => {
+    send("Open", {
+      Key: "Megamall", Name: "Megamall (Blackout)",
+      Description: "Loja com sistema bancário fora do ar.",
+      Mode: "Buy", Type: "Cash",
+      Weight: 12.5, MaxWeight: 50, Blackout: true,
+      Items: [...COMMON_ITEMS.slice(0, 3)],
+    });
+  };
+
+  // Envia quantidade de gemas (mesmo evento da HUD)
+  setTimeout(() => send("Gemstone", 42), 30);
+  setTimeout(openCash, 50);
 
   // ==================== PAINEL DE TESTE ====================
   const buildPanel = () => {
@@ -152,9 +191,17 @@ if (import.meta.env.DEV && isBrowser()) {
 
     const groups = [
       {
-        label: "Painel",
+        label: "Lojas",
         buttons: [
-          { label: "Abrir", action: () => open() },
+          { label: "Cash", action: () => openCash(), accent: "#66ad43" },
+          { label: "Gemstone", action: () => openGemstone(), accent: "#c6986a" },
+          { label: "Consume", action: () => openConsume(), accent: "#6ac6c5" },
+        ],
+      },
+      {
+        label: "Estado",
+        buttons: [
+          { label: "Blackout ON", action: () => openBlackout(), accent: "#f87171" },
           { label: "Fechar", action: () => send("Close") },
         ],
       },
@@ -175,25 +222,26 @@ if (import.meta.env.DEV && isBrowser()) {
       });
       row.appendChild(lbl);
 
-      buttons.forEach(({ label: btnLabel, action }) => {
+      buttons.forEach(({ label: btnLabel, action, accent }) => {
         const btn = document.createElement("button");
         btn.textContent = btnLabel;
         Object.assign(btn.style, {
           padding: "3px 8px",
           fontSize: "11px",
-          background: "rgba(0,0,0,0.55)",
-          color: "#fff",
-          border: "1px solid rgba(255,255,255,0.2)",
+          fontWeight: "500",
+          background: accent ? accent + "22" : "rgba(0,0,0,0.55)",
+          color: accent || "#fff",
+          border: `1px solid ${accent ? accent + "44" : "rgba(255,255,255,0.2)"}`,
           borderRadius: "4px",
           cursor: "pointer",
           backdropFilter: "blur(4px)",
           whiteSpace: "nowrap",
         });
         btn.addEventListener("mouseenter", () => {
-          btn.style.background = "rgba(255,255,255,0.15)";
+          btn.style.background = accent ? accent + "33" : "rgba(255,255,255,0.15)";
         });
         btn.addEventListener("mouseleave", () => {
-          btn.style.background = "rgba(0,0,0,0.55)";
+          btn.style.background = accent ? accent + "22" : "rgba(0,0,0,0.55)";
         });
         btn.addEventListener("click", action);
         row.appendChild(btn);

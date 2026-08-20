@@ -18,6 +18,9 @@ export const useSettingsStore = defineStore("settings", () => {
   const classificationAge = ref(18);
   const classificationTitle = ref("");
   const classificationText = ref("");
+  const tips = ref(true); // shared-side: Tips (mostra/oculta o botão Dicas)
+  const tipsSlides = ref([]); // shared-side: TipsSlides (array de slides)
+  const autoplayInterval = ref(5000); // shared-side: AutoplayInterval (ms entre slides)
 
   return {
     display,
@@ -32,5 +35,8 @@ export const useSettingsStore = defineStore("settings", () => {
     classificationAge,
     classificationTitle,
     classificationText,
+    tips,
+    tipsSlides,
+    autoplayInterval,
   };
 });

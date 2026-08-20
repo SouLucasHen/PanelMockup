@@ -62,6 +62,9 @@ const applyHandoverData = () => {
   if (data.classificationAge != null) settings.classificationAge = data.classificationAge;
   if (data.classificationTitle) settings.classificationTitle = data.classificationTitle;
   if (data.classificationText) settings.classificationText = data.classificationText;
+  if (typeof data.tips === 'boolean') settings.tips = data.tips;
+  if (data.tipsSlides && Array.isArray(data.tipsSlides)) settings.tipsSlides = data.tipsSlides;
+  if (typeof data.autoplayInterval === 'number') settings.autoplayInterval = data.autoplayInterval;
   if (data.theme) applyTheme(data.theme);
 };
 

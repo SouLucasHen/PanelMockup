@@ -48,7 +48,7 @@ const statusLabel = (key) => {
         <p class="min-w-0 truncate text-lg font-semibold leading-tight text-white">{{ vehicle.name }}</p>
         <div class="flex items-center gap-2">
           <span
-            class="inline-flex shrink-0 items-center justify-center rounded-full bg-main/15 px-2 py-0.5 text-xs font-semibold leading-none uppercase tracking-wide text-main ring-1 ring-main/25"
+            class="inline-flex shrink-0 items-center justify-center rounded-md bg-main/15 px-2 py-0.5 text-xs font-semibold leading-none uppercase tracking-wide text-main ring-1 ring-main/25"
           >
             Serviço
           </span>
@@ -56,7 +56,7 @@ const statusLabel = (key) => {
         </div>
       </div>
       <div
-        class="flex max-w-[36rem] shrink-0 items-center justify-center gap-2 rounded-full bg-garageMechanic/15 px-4 py-2 ring-1 ring-garageMechanic/25"
+        class="flex max-w-[36rem] shrink-0 items-center justify-center gap-2 rounded-md bg-garageMechanic/25 px-4 py-2 ring-1 ring-garageMechanic/40"
         title="Você ainda não possui este veículo. Retire-o para adicioná-lo à sua garagem."
       >
         <svg
@@ -88,20 +88,19 @@ const statusLabel = (key) => {
              no pill (vertical e horizontal), mesmo com uppercase/tracking. -->
         <span
           v-if="vehicle.work"
-          class="inline-flex shrink-0 items-center justify-center rounded-full bg-main/15 px-2 py-0.5 text-xs font-semibold leading-none uppercase tracking-wide text-main ring-1 ring-main/25"
+          class="inline-flex shrink-0 items-center justify-center rounded-md bg-main/15 px-2 py-0.5 text-xs font-semibold leading-none uppercase tracking-wide text-main ring-1 ring-main/25"
         >
           Serviço
         </span>
         <span
           v-if="vehicle.rented"
-          class="inline-flex shrink-0 items-center justify-center rounded-full bg-yellow-400/15 px-2 py-0.5 text-xs font-semibold leading-none uppercase tracking-wide text-yellow-400 ring-1 ring-yellow-400/25"
+          class="inline-flex shrink-0 items-center justify-center rounded-md bg-yellow-400/15 px-2 py-0.5 text-xs font-semibold leading-none uppercase tracking-wide text-yellow-400 ring-1 ring-yellow-400/25"
         >
           Alugado
-        </span>
-        <span
+        </span>          <span
           v-if="vehicle.plate"
-          class="inline-flex shrink-0 items-center justify-center rounded-lg bg-white/5 px-2.5 py-1 font-mono text-xs leading-none tracking-wide text-white/70 ring-1 ring-white/10"
-        >
+          class="inline-flex shrink-0 items-center justify-center rounded-md bg-white/5 px-2.5 py-1 font-mono text-xs leading-none tracking-wide text-white/70 ring-1 ring-white/10"
+          >
           {{ vehicle.plate }}
         </span>
         <!-- Só mostra o peso quando o veículo tem porta-malas (peso > 0) -->
@@ -114,7 +113,7 @@ const statusLabel = (key) => {
       <div
         v-for="(value, key) in vehicle.stats"
         :key="key"
-        class="flex w-20 flex-col items-center gap-1 rounded-lg bg-white/5 py-2.5 ring-1 ring-white/10"
+        class="flex w-20 flex-col items-center gap-1 rounded-md bg-white/5 py-2.5 ring-1 ring-white/10"
       >
         <span class="text-base font-semibold leading-none text-white">{{ value }}%</span>
         <span class="text-xs uppercase tracking-wide text-white/50">{{ statusLabel(key) }}</span>
@@ -125,8 +124,8 @@ const statusLabel = (key) => {
     <div class="flex w-72 shrink-0 items-center justify-center">
       <div
         :class="[
-          'flex max-w-full items-center justify-center gap-2 rounded-full px-4 py-2 ring-1',
-          vehicle.time ? 'bg-main/15 ring-main/30' : 'bg-red-500/10 ring-red-500/20',
+          'flex max-w-full items-center justify-center gap-2 rounded-md px-4 py-2 ring-1',
+          vehicle.time ? 'bg-main/25 ring-main/40' : 'bg-red-500/20 ring-red-500/35',
         ]"
         :title="vehicle.time || 'Taxa vencida'"
       >
@@ -161,7 +160,7 @@ const statusLabel = (key) => {
         title="Transferir"
         aria-label="Transferir"
         @click.stop="handleAction('Transfer')"
-        class="flex h-10 w-10 items-center justify-center rounded-lg bg-garageGet/15 text-garageGet ring-1 ring-garageGet/25 transition-colors hover:bg-garageGet/25"
+        class="flex h-10 w-10 items-center justify-center rounded-md bg-garageGet/15 text-garageGet ring-1 ring-garageGet/25 transition-colors hover:bg-garageGet/25"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
           <path d="M8 3 4 7l4 4" />
@@ -175,7 +174,7 @@ const statusLabel = (key) => {
         title="Taxas"
         aria-label="Taxas"
         @click.stop="handleAction('Tax')"
-        class="flex h-10 w-10 items-center justify-center rounded-lg bg-garageSave/15 text-garageSave ring-1 ring-garageSave/25 transition-colors hover:bg-garageSave/25"
+        class="flex h-10 w-10 items-center justify-center rounded-md bg-garageSave/15 text-garageSave ring-1 ring-garageSave/25 transition-colors hover:bg-garageSave/25"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
           <rect width="20" height="12" x="2" y="6" rx="2" />
@@ -187,7 +186,7 @@ const statusLabel = (key) => {
         title="Vender"
         aria-label="Vender"
         @click.stop="handleAction('Sell')"
-        class="flex h-10 w-10 items-center justify-center rounded-lg bg-garageSell/15 text-garageSell ring-1 ring-garageSell/25 transition-colors hover:bg-garageSell/25"
+        class="flex h-10 w-10 items-center justify-center rounded-md bg-garageSell/15 text-garageSell ring-1 ring-garageSell/25 transition-colors hover:bg-garageSell/25"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
           <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />

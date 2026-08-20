@@ -3,6 +3,7 @@ import { useShopStore } from "@stores/shop";
 import ItemCard from "@components/ItemCard.vue";
 
 const shop = useShopStore();
+const emit = defineEmits(["info", "add"]);
 </script>
 
 <template>
@@ -14,7 +15,7 @@ const shop = useShopStore();
       v-if="shop.items.length"
       class="grid grid-cols-5 gap-3 pb-6"
     >
-      <ItemCard v-for="item in shop.items" :key="item.key" :item="item" />
+      <ItemCard v-for="item in shop.items" :key="item.key" :item="item" @info="emit('info', $event)" @add="emit('add', $event)" />
     </div>
 
     <div v-else class="flex size-full flex-col items-center justify-center gap-4 text-center">

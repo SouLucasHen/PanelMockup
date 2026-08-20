@@ -36,14 +36,19 @@ local function OpenShop(Mode)
 		Items[#Items + 1] = {
 			Item = v.key,
 			Name = exports.vrp:ItemName(v.key),
+			Description = exports.vrp:ItemDescription(v.key),
+			Type = exports.vrp:ItemType(v.key),
 			Price = v.price,
 			Weight = exports.vrp:ItemWeight(v.key),
 			Image = exports.vrp:ItemIndex(v.key),
 			Max = exports.vrp:ItemMaxAmount(v.key),
+			Durability = exports.vrp:ItemDurability(v.key),
 			Current = CurrentAmounts[v.key] or 0,
 			Rarity = exports.vrp:ItemRarity(v.key)
 		}
 	end
+
+	local CurrentWeight,MaxWeight,ItemWeight = vSERVER.Weight(Opened)
 
 	SendNUIMessage({
 		Action = "Open",
@@ -54,6 +59,10 @@ local function OpenShop(Mode)
 			Mode = Catalog.Mode,
 			Type = Catalog.Type,
 			ItemName = Catalog.Type == "Consume" and Catalog.Item and exports.vrp:ItemName(Catalog.Item) or nil,
+			Weight = CurrentWeight or 0,
+			MaxWeight = MaxWeight or 0,
+			ItemWeight = ItemWeight or 0,
+			Blackout = GlobalState.Blackout or false,
 			Items = Items
 		}
 	})

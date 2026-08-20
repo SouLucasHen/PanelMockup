@@ -24,7 +24,7 @@ function devMedia() {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = (req.url || "").split("?")[0];
-        if (!url.startsWith("/video/") && !url.startsWith("/audio/")) {
+        if (!url.startsWith("/video/") && !url.startsWith("/audio/") && !url.startsWith("/tips/")) {
           next();
           return;
         }

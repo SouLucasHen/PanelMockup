@@ -133,6 +133,23 @@ function Creative.Current(Name)
 	return Current
 end
 -----------------------------------------------------------------------------------------------------------------------------------------
+-- WEIGHT
+-----------------------------------------------------------------------------------------------------------------------------------------
+function Creative.Weight(Name)
+	local source = source
+	local Passport = vRP.Passport(source)
+	if not Passport then
+		return 0,0,0
+	end
+
+	local ItemWeight = 0
+	if Name and List[Name] and List[Name].Type == "Consume" and List[Name].Item then
+		ItemWeight = exports.vrp:ItemWeight(List[Name].Item)
+	end
+
+	return vRP.InventoryWeight(Passport),vRP.GetWeight(Passport),ItemWeight
+end
+-----------------------------------------------------------------------------------------------------------------------------------------
 -- MOUNT
 -----------------------------------------------------------------------------------------------------------------------------------------
 function Creative.Mount(Name)

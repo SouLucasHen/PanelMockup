@@ -16,10 +16,14 @@ import itemImage from "@utils/itemImage";
 import rarityStyle from "@utils/rarity";
 
 import Inicio from "./views/Inicio.vue";
+import ItemDetail from "@components/ItemDetail.vue";
+import { playAdd, playRemove, playClick } from "@utils/sound";
 import Cart from "@icons/Cart.vue";
+import Gemstone from "@icons/Gemstone.vue";
 import Plus from "@icons/Plus.vue";
 import Minus from "@icons/Minus.vue";
 import Trash from "@icons/Trash.vue";
+import Swap from "@icons/Swap.vue";
 import Scribble from "@icons/Scribble.vue";
 
 const settings = useSettingsStore();
@@ -28,6 +32,70 @@ const shop = useShopStore();
 // Em dev (navegador) o fundo usa o wallpaper simulando o mundo do jogo;
 // no jogo (build) o fundo continua o overlay escuro sobre o mundo real.
 const isDev = import.meta.env.DEV;
+
+// ==================== POPUP DE DETALHES DO ITEM ====================
+// Item selecionado para exibir no popup de detalhes (null = fechado).
+const detailItem = ref(null);
+
+const openDetail = (item) => {
+  detailItem.value = item;
+};
+
+const closeDetail = () => {
+  detailItem.value = null;
+};
+
+// ==================== SOM ====================
+const handleAddToCart = (item) => {
+  shop.addToCart(item);
+  playAdd();
+};
+
+const handleChangeAmount = (key, delta) => {
+  shop.changeAmount(key, delta);
+  playClick();
+};
+
+const handleRemoveFromCart = (key) => {
+  shop.removeFromCart(key);
+  playRemove();
+};
+
+// ==================== PESO ====================
+// Para Consume: usa peso líquido (recebido - entregue)
+// Para Cash/Gemstone: usa peso bruto (só recebido)
+const effectiveCartWeight = computed(() => shop.cartNetWeight);
+
+const weightPercent = computed(() => {
+  if (!shop.maxWeight) return 0;
+  const total = shop.weight + effectiveCartWeight.value;
+  return Math.min((total / shop.maxWeight) * 100, 100);
+});
+
+const weightCurrentPercent = computed(() => {
+  if (!shop.maxWeight) return 0;
+  return Math.min((shop.weight / shop.maxWeight) * 100, 100);
+});
+
+const weightCartPercent = computed(() => {
+  if (!shop.maxWeight) return 0;
+  const cart = effectiveCartWeight.value;
+  if (cart < 0) {
+    // Consume: mostra a redução de peso (barra vai para esquerda)
+    return Math.min(Math.abs(cart) / shop.maxWeight * 100, weightCurrentPercent.value);
+  }
+  return Math.min(cart / shop.maxWeight * 100, 100 - weightCurrentPercent.value);
+});
+
+const isWeightWarning = computed(() => weightPercent.value >= 80);
+const isWeightFull = computed(() => weightPercent.value >= 100);
+const isOverWeight = computed(() => shop.maxWeight > 0 && (shop.weight + effectiveCartWeight.value) > shop.maxWeight);
+
+const weightBarColor = computed(() => {
+  if (isWeightFull.value) return "bg-red-500";
+  if (isWeightWarning.value) return "bg-yellow-500";
+  return "bg-main";
+});
 
 // Rabiscos (Scribble) e glows (círculos) do fundo — controlados pelo
 // Theme.shop.scribble da vrp (vrp/config/Global.lua). false = só a cor de
@@ -70,11 +138,17 @@ const checkoutButtons = computed(() => {
     return [{ payment: "Item", label: `Pagar com ${shop.itemName || "Item"}` }];
   }
 
-  // Padrão (Cash e demais): dinheiro e banco lado a lado, mesma cor
-  return [
+  // Padrão (Cash): dinheiro sempre disponível
+  const buttons = [
     { payment: "Cash", label: "Pagar com Dinheiro" },
-    { payment: "Bank", label: "Pagar com Banco" },
   ];
+
+  // Banco só aparece se não estiver em blackout
+  if (!shop.blackout) {
+    buttons.push({ payment: "Bank", label: "Pagar com Banco" });
+  }
+
+  return buttons;
 });
 
 // ==================== NUI / FECHAR ====================
@@ -96,6 +170,8 @@ const handleMessage = (event) => {
     shop.setCatalog(payload);
   } else if (actionName === "Close") {
     settings.display = false;
+  } else if (actionName === "Gemstone") {
+    settings.gemstone = payload;
   }
 };
 
@@ -108,6 +184,11 @@ onMounted(async () => {
   const themeData = await loadTheme();
   if (themeData?.shop?.scribble !== undefined) {
     showDecor.value = themeData.shop.scribble !== false;
+  }
+  // Símbolo da moeda vindo de Theme.currency (vrp/config/Global.lua).
+  // Permite que o cliente mude o símbolo em um só lugar (Global.lua).
+  if (themeData?.currency) {
+    settings.currency = themeData.currency;
   }
 
   window.addEventListener("message", handleMessage);
@@ -173,9 +254,18 @@ onUnmounted(() => {
               </div>
 
               <div class="flex items-center gap-3 shrink-0">
+                <!-- Contador de gemas (só lojas Gemstone) -->
+                <div
+                  v-if="shop.type === 'Gemstone'"
+                  class="flex items-center gap-2 h-10 px-3 rounded-md bg-white/5 ring-1 ring-white/10"
+                >
+                  <Gemstone class="w-4 h-4 text-[rgb(var(--common))] shrink-0" />
+                  <span class="text-sm font-semibold text-white/80">{{ settings.gemstone.toLocaleString('pt-BR') }}</span>
+                </div>
+
                 <button
                   @click.stop="closeNUI()"
-                  class="w-10 h-10 rounded-md bg-neutral-800 text-white transition-colors hover:bg-neutral-700 cursor-pointer flex items-center justify-center"
+                  class="w-10 h-10 rounded-md bg-white/5 text-white/60 ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:text-white cursor-pointer flex items-center justify-center"
                   aria-label="Fechar painel"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -192,7 +282,7 @@ onUnmounted(() => {
                 <!-- Catálogo: grade de itens -->
                 <div class="flex-1 min-w-0 overflow-hidden rounded-md bg-main/10 ring-1 ring-main/15">
                   <div class="h-full min-h-0 overflow-x-hidden overflow-y-auto cards-scroll px-6 pt-6">
-                    <Inicio />
+                    <Inicio @info="openDetail" @add="handleAddToCart" />
                   </div>
                 </div>
 
@@ -210,12 +300,16 @@ onUnmounted(() => {
                       <img :src="itemImage(entry.image)" :alt="entry.name" class="h-10 w-10 shrink-0 object-contain" />
                       <div class="min-w-0 flex-1">
                         <p class="truncate text-sm font-semibold text-white leading-tight">{{ entry.name }}</p>
-                        <p class="text-xs font-medium text-white/60 leading-tight">$ {{ formatPrice(entry.price * entry.amount) }}</p>
+                        <p class="flex items-center gap-1 text-xs font-medium text-white/60 leading-tight">
+                          <template v-if="shop.type === 'Consume'">x{{ formatPrice(entry.price * entry.amount) }}</template>
+                          <template v-else-if="shop.type === 'Gemstone'"><Gemstone class="w-2.5 h-2.5 shrink-0" /> {{ formatPrice(entry.price * entry.amount) }}</template>
+                          <template v-else>{{ settings.currency }} {{ formatPrice(entry.price * entry.amount) }}</template>
+                        </p>
                       </div>
 
                       <div class="flex items-center gap-1.5 shrink-0">
                         <button
-                          @click="shop.changeAmount(entry.key, -1)"
+                          @click="handleChangeAmount(entry.key, -1)"
                           class="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-white/70 ring-1 ring-white/10 transition-colors hover:bg-white/10"
                           aria-label="Diminuir quantidade"
                         >
@@ -223,7 +317,7 @@ onUnmounted(() => {
                         </button>
                         <span class="w-6 text-center text-sm font-semibold text-white">{{ entry.amount }}</span>
                         <button
-                          @click="shop.changeAmount(entry.key, 1)"
+                          @click="handleChangeAmount(entry.key, 1)"
                           :disabled="!shop.canAddMore(entry.key)"
                           class="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-white/70 ring-1 ring-white/10 transition-colors hover:bg-white/10 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-white/5"
                           aria-label="Aumentar quantidade"
@@ -234,7 +328,7 @@ onUnmounted(() => {
 
                       <div class="flex items-center gap-2 shrink-0">
                         <button
-                          @click="shop.removeFromCart(entry.key)"
+                          @click="handleRemoveFromCart(entry.key)"
                           class="flex h-7 w-7 items-center justify-center rounded-md bg-red-500/10 text-red-400 ring-1 ring-red-500/20 transition-colors hover:bg-red-500/20"
                           aria-label="Remover do carrinho"
                         >
@@ -246,20 +340,66 @@ onUnmounted(() => {
 
                   <!-- Estado vazio -->
                   <div v-else class="flex size-full flex-col items-center justify-center gap-4 text-center">
-                    <Cart class="h-10 w-10 text-white/40" />
-                    <p class="text-white/50">Seu carrinho está vazio.</p>
+                    <template v-if="shop.type === 'Consume'">
+                      <Swap class="h-10 w-10 text-white/40" />
+                      <p class="text-white/50">Nenhum item selecionado para troca.</p>
+                    </template>
+                    <template v-else>
+                      <Cart class="h-10 w-10 text-white/40" />
+                      <p class="text-white/50">Seu carrinho está vazio.</p>
+                    </template>
                   </div>
                 </div>
 
                 <!-- Rodapé: preço total + botões de pagamento -->
                 <div class="shrink-0 border-t border-white/5 px-5 py-5 flex flex-col gap-4">
+                  <!-- Total -->
                   <div class="flex items-center justify-between">
-                    <p class="text-sm font-semibold uppercase tracking-wide text-white/60">Preço Total:</p>
-                    <p class="text-xl font-bold text-white">$ {{ formatPrice(shop.cartTotal) }}</p>
+                    <p class="text-sm font-semibold uppercase tracking-wide text-white/60">
+                      {{ shop.type === 'Consume' ? 'Consumo Total:' : 'Preço Total:' }}
+                    </p>
+                    <p class="flex items-center gap-1.5 text-xl font-bold text-white">
+                      <template v-if="shop.type === 'Consume'">x{{ formatPrice(shop.cartTotal) }}</template>
+                      <template v-else-if="shop.type === 'Gemstone'"><Gemstone class="w-4 h-4 shrink-0" /> {{ formatPrice(shop.cartTotal) }}</template>
+                      <template v-else>{{ settings.currency }} {{ formatPrice(shop.cartTotal) }}</template>
+                    </p>
                   </div>
-                  <!-- Peso total do carrinho — linha menor, só informação (mesmo
-                       padrão do Preço/Peso dos cards, onde o preço é o destaque) -->
-                  <div class="-mt-2 flex items-center justify-between">
+                  <!-- Item de troca (Consume) -->
+                  <div v-if="shop.type === 'Consume' && shop.itemName" class="-mt-2 flex items-center justify-between">
+                    <p class="text-xs font-medium uppercase tracking-wide text-white/40">Item de troca</p>
+                    <p class="text-xs font-semibold text-[rgb(var(--common))]">x{{ formatPrice(shop.cartTotal) }} {{ shop.itemName }}</p>
+                  </div>
+                  <!-- Peso: barra com 2 segmentos (atual + carrinho/liquido) -->
+                  <div v-if="shop.maxWeight" class="-mt-2 flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between">
+                      <p class="text-xs font-medium uppercase tracking-wide text-white/40">Peso</p>
+                      <p class="text-xs font-semibold" :class="isWeightFull ? 'text-red-400' : isWeightWarning ? 'text-yellow-400' : 'text-white/80'">
+                        {{ formatWeight(shop.weight) }}
+                        <span v-if="effectiveCartWeight !== 0" :class="effectiveCartWeight > 0 ? 'text-[rgb(var(--common))]' : 'text-red-400'">
+                          {{ effectiveCartWeight > 0 ? '+' : '' }} {{ formatWeight(effectiveCartWeight) }}
+                        </span>
+                        <span class="text-white/40"> / {{ formatWeight(shop.maxWeight) }}</span>
+                      </p>
+                    </div>
+                    <div class="relative h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+                      <!-- Peso atual (verde escuro) -->
+                      <div
+                        class="absolute inset-y-0 left-0 rounded-full bg-main/30 transition-all duration-300"
+                        :style="{ width: weightCurrentPercent + '%' }"
+                      ></div>
+                      <!-- Peso do carrinho (verde = ganho, vermelho = perda) -->
+                      <div
+                        v-if="effectiveCartWeight !== 0"
+                        class="absolute inset-y-0 rounded-full transition-all duration-300"
+                        :class="effectiveCartWeight > 0 ? weightBarColor : 'bg-red-500/60'"
+                        :style="effectiveCartWeight > 0
+                          ? { left: weightCurrentPercent + '%', width: weightCartPercent + '%' }
+                          : { left: (weightCurrentPercent - weightCartPercent) + '%', width: weightCartPercent + '%' }"
+                      ></div>
+                    </div>
+                  </div>
+                  <!-- Fallback: só texto se não tiver maxWeight -->
+                  <div v-else class="-mt-2 flex items-center justify-between">
                     <p class="text-xs font-medium uppercase tracking-wide text-white/40">Peso Total:</p>
                     <p class="text-sm font-semibold text-white/80">{{ formatWeight(shop.cartWeight) }}</p>
                   </div>
@@ -271,12 +411,12 @@ onUnmounted(() => {
                       v-for="btn in checkoutButtons"
                       :key="btn.payment"
                       @click="handleCheckout(btn.payment)"
-                      :disabled="!shop.cartCount"
+                      :disabled="!shop.cartCount || isOverWeight"
                       :class="[
-                        'flex-1 whitespace-nowrap rounded-md py-3 text-xs font-bold uppercase tracking-wide text-white transition-colors',
-                        shop.cartCount
-                          ? 'bg-shopBuy hover:bg-shopBuyHover cursor-pointer'
-                          : 'bg-shopBuy/25 text-white/40 cursor-default',
+                        'flex-1 whitespace-nowrap rounded-md py-3 text-xs font-bold uppercase tracking-wide transition-colors',
+                        shop.cartCount && !isOverWeight
+                          ? 'bg-shopBuy hover:bg-shopBuyHover text-white/90 cursor-pointer'
+                          : 'bg-shopBuy/25 text-white/30 cursor-default',
                       ]"
                     >
                       {{ btn.label }}
@@ -290,5 +430,9 @@ onUnmounted(() => {
         </div>
       </div>
     </transition>
+    <!-- Popup de detalhes do item (renderizado quando um item é selecionado) -->
+    <ItemDetail v-if="detailItem" :item="detailItem" @close="closeDetail" />
+
+
   </div>
 </template>

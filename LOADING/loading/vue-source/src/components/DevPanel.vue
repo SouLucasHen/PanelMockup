@@ -28,6 +28,16 @@ const TOGGLES = [
     { key: "classification", label: "Classificação" },
 ];
 
+const AGE_PRESETS = [
+    { age: 0, label: "Livre" },
+    { age: 10, label: "10" },
+    { age: 12, label: "12" },
+    { age: 14, label: "14" },
+    { age: 16, label: "16" },
+    { age: 18, label: "18" },
+    { age: 21, label: "21" },
+];
+
 // Troca a cor mantendo o modelo/tema atuais.
 const setColor = (main) => {
     applyTheme({
@@ -126,6 +136,33 @@ const setMode = (mode) => {
                         >
                             {{ settings[t.key] ? "✓" : "" }} {{ t.label }}
                         </button>
+                    </div>
+                </div>
+                <!-- Classificação Indicativa -->
+                <div>
+                    <p class="text-[0.625rem] uppercase tracking-widest opacity-50 mb-1.5">Idade (Classificação)</p>
+                    <div class="grid grid-cols-4 gap-1">
+                        <button
+                            v-for="a in AGE_PRESETS"
+                            :key="a.age"
+                            @click="settings.classificationAge = a.age"
+                            :class="[
+                                'rounded-md py-1 px-1.5 text-xs font-bold transition-colors cursor-pointer',
+                                settings.classificationAge === a.age ? 'bg-main text-mainText' : 'bg-white/10 hover:bg-white/20',
+                            ]"
+                        >
+                            {{ a.label }}
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 mt-1.5">
+                        <input
+                            type="range"
+                            :min="0"
+                            :max="21"
+                            v-model.number="settings.classificationAge"
+                            class="flex-1 accent-white/50"
+                        />
+                        <span class="text-xs font-bold w-6 text-center">{{ settings.classificationAge }}</span>
                     </div>
                 </div>
             </div>

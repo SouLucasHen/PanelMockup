@@ -60,6 +60,12 @@ const canRequestMechanic = computed(() => {
   return !!vehicle && vehicle.owned;
 });
 
+// ==================== GARAGEM / INFO ====================
+// Veículos de serviço: quantidade possuída vs disponível para comprar.
+const isWorkGarage = computed(() => garage.vehicles.some((v) => v.work));
+const ownedCount = computed(() => garage.vehicles.filter((v) => v.owned).length);
+const availableCount = computed(() => garage.vehicles.filter((v) => !v.owned).length);
+
 // ==================== NUI / FECHAR ====================
 // O painel fecha apenas pelo botão X do cabeçalho (ESC não fecha mais).
 const closeNUI = () => {
@@ -76,11 +82,13 @@ const handleMessage = (event) => {
 
   if (actionName === "Open") {
     settings.display = true;
-    // O client envia { Action = "Open", Payload = Vehicles } com Payload sendo
-    // o array de veículos direto (client-side/core.lua). Aceita também o
-    // formato { Payload = { Vehicles = [...] } } para compatibilidade.
+    // O client envia { Action = "Open", Payload = { Name, Number, Vehicles } }
+    // com Name sendo o nome da garagem, Number a numeração e Vehicles o array.
+    // Aceita também o formato antigo Payload = [...] (só array) para compatibilidade.
     const vehicles = Array.isArray(payload) ? payload : payload.Vehicles || payload.vehicles || [];
-    garage.setVehicles(vehicles);
+    const name = payload.Name || payload.name || "";
+    const number = payload.Number || payload.number || "";
+    garage.setVehicles(vehicles, name, number);
   } else if (actionName === "Close") {
     settings.display = false;
   }
@@ -160,8 +168,8 @@ onUnmounted(() => {
                   <Garage class="w-7 h-7 text-main" />
                 </div>
                 <div class="flex flex-col min-w-0">
-                  <p class="text-2xl font-semibold text-white leading-tight truncate">GARAGEM</p>
-                  <p class="text-sm text-white/50 leading-tight truncate">GERENCIE OS VEÍCULOS GUARDADOS NESTE PONTO</p>
+                  <p class="text-2xl font-semibold text-white leading-tight truncate">{{ garage.name || "GARAGEM" }}</p>
+                  <p class="text-sm text-white/50 leading-tight truncate">Gerencie os veículos guardados neste ponto</p>
                 </div>
               </div>
 
@@ -200,7 +208,7 @@ onUnmounted(() => {
                 </button>
                 <button
                   @click.stop="closeNUI()"
-                  class="w-10 h-10 rounded-md bg-neutral-800 text-white transition-colors hover:bg-neutral-700 cursor-pointer flex items-center justify-center"
+                  class="w-10 h-10 rounded-md bg-white/5 text-white/60 ring-1 ring-white/10 transition-colors hover:bg-white/10 hover:text-white cursor-pointer flex items-center justify-center"
                   aria-label="Fechar painel"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
@@ -211,21 +219,62 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Barra de pesquisa (acima do conteúdo) — só aparece quando a garagem tem veículos -->
+            <!-- Barra informativa + pesquisa (acima do conteúdo) -->
             <div
               v-if="garage.vehicles.length"
-              class="relative z-20 mx-6 mt-6 overflow-hidden rounded-md bg-main/10 ring-1 ring-main/15 flex flex-col gap-2 px-6 py-4"
+              class="relative z-20 mx-6 mt-6 flex gap-4"
             >
-              <label for="search-vehicle" class="text-xs uppercase tracking-wide text-white/50">
-                Pesquisar veículo
-              </label>
-              <input
-                id="search-vehicle"
-                v-model="garage.search"
-                type="text"
-                placeholder="Digite o nome do veículo..."
-                class="h-12 w-full rounded-md bg-white/5 px-4 text-sm text-white ring-1 ring-white/5 placeholder:text-white/40 transition-colors focus:bg-white/[0.07] focus:ring-main/40"
-              />
+              <!-- Lado esquerdo: informações da garagem -->
+              <div class="flex items-center gap-5 shrink-0 rounded-md bg-main/10 ring-1 ring-main/15 px-6 py-4">
+                <!-- Ícone -->
+                <div class="w-14 h-14 rounded-xl bg-main/15 ring-1 ring-main/15 flex items-center justify-center shrink-0">
+                  <Car class="w-7 h-7 text-main" />
+                </div>
+
+                <!-- Título + stats -->
+                <div class="flex flex-col min-w-0 gap-1.5">
+                  <p class="text-sm font-semibold leading-tight">
+                    <span class="text-white/50">Garagem número </span>
+                    <span class="text-white">{{ garage.number || "?" }}</span>
+                    <template v-if="garage.name">
+                      <span class="text-white/20"> · </span>
+                      <span class="text-white/50">{{ garage.name }}</span>
+                    </template>
+                  </p>
+
+                  <!-- Grid de stats -->
+                  <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 rounded-md bg-white/5 px-2.5 py-1 ring-1 ring-white/10">
+                      <span class="text-sm font-semibold text-white">{{ garage.vehicles.length }}</span>
+                      <span class="text-xs text-white/50">Veículos</span>
+                    </span>
+                    <template v-if="isWorkGarage">
+                      <span class="inline-flex items-center gap-1.5 rounded-md bg-white/5 px-2.5 py-1 ring-1 ring-white/10">
+                        <span class="text-sm font-semibold text-[rgb(var(--common))]">{{ ownedCount }}</span>
+                        <span class="text-xs text-white/50">Possuí{{ ownedCount !== 1 ? 'dos' : 'do' }}</span>
+                      </span>
+                      <span class="inline-flex items-center gap-1.5 rounded-md bg-white/5 px-2.5 py-1 ring-1 ring-white/10">
+                        <span class="text-sm font-semibold text-white">{{ availableCount }}</span>
+                        <span class="text-xs text-white/50">Disponível{{ availableCount !== 1 ? 'is' : '' }}</span>
+                      </span>
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lado direito: pesquisa -->
+              <div class="flex-1 flex flex-col gap-2 min-w-0 rounded-md bg-main/10 ring-1 ring-main/15 px-6 py-4">
+                <label for="search-vehicle" class="text-xs uppercase tracking-wide text-white/50">
+                  Pesquisar veículo
+                </label>
+                <input
+                  id="search-vehicle"
+                  v-model="garage.search"
+                  type="text"
+                  placeholder="Digite o nome do veículo..."
+                  class="h-12 w-full rounded-md bg-white/5 px-4 text-sm text-white ring-1 ring-white/5 placeholder:text-white/40 transition-colors focus:bg-white/[0.07] focus:ring-main/40"
+                />
+              </div>
             </div>
 
             <!-- Conteúdo: segundo fundo no mesmo padrão da barra de pesquisa, com os cards dentro -->
