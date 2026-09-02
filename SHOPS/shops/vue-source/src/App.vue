@@ -103,10 +103,10 @@ const weightBarColor = computed(() => {
 const showDecor = ref(true);
 
 // ==================== LOJA / FINALIZAR COMPRA ====================
-// Callback NUI "Checkout" no client (client-side/core.lua). O Payment é a
-// forma de pagamento escolhida: "Cash" (dinheiro via TakeItem do dollar),
-// "Bank" (vRP.PaymentBank), "Gems" (vRP.PaymentGems) ou "Item" (lojas
-// Consume, que trocam por um item da loja — ex.: dirtydollar/ironfilings).
+// Callback NUI "Checkout" no client (client-side/core.lua) para compra,
+// ou "Sell" para venda. O Payment é a forma de pagamento escolhida:
+// "Cash" (dinheiro via TakeItem do dollar), "Bank" (vRP.PaymentBank),
+// "Gems" (vRP.PaymentGems) ou "Item" (lojas Consume).
 const handleCheckout = (payment) => {
   if (!shop.cartCount) return;
 
@@ -115,10 +115,12 @@ const handleCheckout = (payment) => {
     Amount: entry.amount,
   }));
 
-  fetchNui("Checkout", { Items: items, Payment: payment }).then((result) => {
-    // Sucesso (true ou { Success = true }): limpa o carrinho (e o salvo da loja)
-    // para a próxima abertura começar vazia; falha (ex.: dinheiro insuficiente)
-    // mantém o carrinho, que é restaurado ao reabrir a mesma loja.
+  const callback = shop.mode === "Sell" ? "Sell" : "Checkout";
+  const payload = shop.mode === "Sell"
+    ? { Items: items }
+    : { Items: items, Payment: payment };
+
+  fetchNui(callback, payload).then((result) => {
     const success = result === true || result?.Success === true;
     if (success) {
       shop.onPurchaseSuccess();
@@ -126,10 +128,14 @@ const handleCheckout = (payment) => {
   });
 };
 
-// Botões de pagamento conforme o tipo da loja (Type da List em shared-side).
-// Cash → Dinheiro + Banco lado a lado; Gemstone → só Gemas; Consume → o item
-// de troca da loja.
+// Botões de pagamento/conclusão conforme o modo e tipo da loja.
+// Sell → único botão "Vender". Buy → Cash = Dinheiro + Banco;
+// Gemstone = Gemas; Consume = item de troca.
 const checkoutButtons = computed(() => {
+  if (shop.mode === "Sell") {
+    return [{ payment: "Sell", label: "Vender" }];
+  }
+
   if (shop.type === "Gemstone") {
     return [{ payment: "Gems", label: "Pagar com Gemas" }];
   }
@@ -249,7 +255,7 @@ onUnmounted(() => {
                   <p class="text-2xl font-semibold text-white leading-tight truncate uppercase">
                     {{ shop.name }}
                   </p>
-                  <p class="text-sm text-white/50 leading-tight truncate">{{ shop.description || "COMPRE OS ITENS DISPONÍVEIS NESTA LOJA" }}</p>
+                  <p class="text-sm text-white/50 leading-tight truncate">{{ shop.description || (shop.mode === 'Sell' ? 'VENDA OS ITENS DO SEU INVENTÁRIO' : 'COMPRE OS ITENS DISPONÍVEIS NESTA LOJA') }}</p>
                 </div>
               </div>
 
@@ -340,7 +346,11 @@ onUnmounted(() => {
 
                   <!-- Estado vazio -->
                   <div v-else class="flex size-full flex-col items-center justify-center gap-4 text-center">
-                    <template v-if="shop.type === 'Consume'">
+                    <template v-if="shop.mode === 'Sell'">
+                      <Swap class="h-10 w-10 text-white/40" />
+                      <p class="text-white/50">Nenhum item selecionado para venda.</p>
+                    </template>
+                    <template v-else-if="shop.type === 'Consume'">
                       <Swap class="h-10 w-10 text-white/40" />
                       <p class="text-white/50">Nenhum item selecionado para troca.</p>
                     </template>
@@ -356,16 +366,17 @@ onUnmounted(() => {
                   <!-- Total -->
                   <div class="flex items-center justify-between">
                     <p class="text-sm font-semibold uppercase tracking-wide text-white/60">
-                      {{ shop.type === 'Consume' ? 'Consumo Total:' : 'Preço Total:' }}
+                      {{ shop.mode === 'Sell' ? 'Ganho Total:' : shop.type === 'Consume' ? 'Consumo Total:' : 'Preço Total:' }}
                     </p>
                     <p class="flex items-center gap-1.5 text-xl font-bold text-white">
-                      <template v-if="shop.type === 'Consume'">x{{ formatPrice(shop.cartTotal) }}</template>
+                      <template v-if="shop.mode === 'Sell' && shop.type === 'Consume'">x{{ formatPrice(shop.cartTotal) }} {{ shop.itemName }}</template>
+                      <template v-else-if="shop.type === 'Consume'">x{{ formatPrice(shop.cartTotal) }}</template>
                       <template v-else-if="shop.type === 'Gemstone'"><Gemstone class="w-4 h-4 shrink-0" /> {{ formatPrice(shop.cartTotal) }}</template>
                       <template v-else>{{ settings.currency }} {{ formatPrice(shop.cartTotal) }}</template>
                     </p>
                   </div>
-                  <!-- Item de troca (Consume) -->
-                  <div v-if="shop.type === 'Consume' && shop.itemName" class="-mt-2 flex items-center justify-between">
+                  <!-- Item de troca / recebimento (Consume) -->
+                  <div v-if="shop.type === 'Consume' && shop.itemName && shop.mode !== 'Sell'" class="-mt-2 flex items-center justify-between">
                     <p class="text-xs font-medium uppercase tracking-wide text-white/40">Item de troca</p>
                     <p class="text-xs font-semibold text-[rgb(var(--common))]">x{{ formatPrice(shop.cartTotal) }} {{ shop.itemName }}</p>
                   </div>
@@ -415,8 +426,8 @@ onUnmounted(() => {
                       :class="[
                         'flex-1 whitespace-nowrap rounded-md py-3 text-xs font-bold uppercase tracking-wide transition-colors',
                         shop.cartCount && !isOverWeight
-                          ? 'bg-shopBuy hover:bg-shopBuyHover text-white/90 cursor-pointer'
-                          : 'bg-shopBuy/25 text-white/30 cursor-default',
+                          ? (shop.mode === 'Sell' ? 'bg-shopSell hover:bg-shopSellHover text-white/90 cursor-pointer' : 'bg-shopBuy hover:bg-shopBuyHover text-white/90 cursor-pointer')
+                          : (shop.mode === 'Sell' ? 'bg-shopSell/25 text-white/30 cursor-default' : 'bg-shopBuy/25 text-white/30 cursor-default'),
                       ]"
                     >
                       {{ btn.label }}

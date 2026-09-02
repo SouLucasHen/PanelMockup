@@ -29,6 +29,8 @@
     --mainDark: 82 143 54;
     --shopBuy: 82 143 54;
     --shopBuyHover: 102 173 67;
+    --shopSell: 185 68 68;
+    --shopSellHover: 220 80 80;
     --shopCategory: 120 183 90;
     --shopCategoryHover: 136 192 110;
 }

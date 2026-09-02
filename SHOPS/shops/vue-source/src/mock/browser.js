@@ -18,6 +18,7 @@ if (import.meta.env.DEV && isBrowser()) {
   // Ambas seguem a tonalidade da cor principal do tema (main #66ad43).
   const SHOP_THEME = {
     buy: "#66ad43",
+    sell: "#b94444",
     category: "#78b75a",
     // Espelha o Theme.shop.scribble da vrp: false desliga rabiscos/glows
     scribble: true,
@@ -58,6 +59,12 @@ if (import.meta.env.DEV && isBrowser()) {
       // fecha na hora do clique para confirmar a compra; sucesso true limpa
       // o carrinho (que é resetado ao reabrir a loja)
       send("Close");
+      return { Success: true };
+    },
+    Sell: (body) => {
+      // Callback de venda: fecha o painel e confirma sucesso
+      send("Close");
+      console.log("[Mock Sell] Itens vendidos:", JSON.stringify(body.Items));
       return { Success: true };
     },
     // Mesma convenção da HUD: o tema vem do resource "vrp".
@@ -159,6 +166,40 @@ if (import.meta.env.DEV && isBrowser()) {
     });
   };
 
+  // ==================== LOJA SELL — Cash (Pesca) ====================
+  const openSellCash = () => {
+    send("Open", {
+      Key: "Fishing", Name: "Pesca",
+      Description: "Venda os peixes da sua pescaria.",
+      Mode: "Sell", Type: "Cash",
+      Weight: 12.5, MaxWeight: 50, Blackout: false,
+      Items: [
+        { Item: "sardine", Name: "Sardinha", Description: "Peixe pequeno e saboroso.", Type: "Comum", Price: 65, Weight: 0.3, Image: "sardine", Current: 12, Rarity: "common" },
+        { Item: "smalltrout", Name: "Truta Pequena", Description: "Truta fresca do rio.", Type: "Comum", Price: 65, Weight: 0.4, Image: "smalltrout", Current: 5, Rarity: "common" },
+        { Item: "anchovy", Name: "Manjubinha", Description: "Peixe pequeno para isca.", Type: "Comum", Price: 70, Weight: 0.2, Image: "anchovy", Current: 20, Rarity: "common" },
+        { Item: "catfish", Name: "Bagre", Description: "Bagre de água doce.", Type: "Comum", Price: 70, Weight: 0.8, Image: "catfish", Current: 3, Rarity: "common" },
+        { Item: "salmon", Name: "Salmão", Description: "Salmão fresco e valioso.", Type: "Comum", Price: 125, Weight: 1.2, Image: "salmon", Current: 2, Rarity: "rare" },
+        { Item: "smallshark", Name: "Tubarão", Description: "Tubarão jovem capturado.", Type: "Comum", Price: 250, Weight: 3.0, Image: "smallshark", Current: 0, Rarity: "epic" },
+      ],
+    });
+  };
+
+  // ==================== LOJA SELL — Consume (Clandestine) ====================
+  const openSellConsume = () => {
+    send("Open", {
+      Key: "Clandestine", Name: "Mercado Clandestino",
+      Description: "Peças e itens de procedência duvidosa.",
+      Mode: "Sell", Type: "Consume", ItemName: "Dólar Sujo",
+      Weight: 12.5, MaxWeight: 50, ItemWeight: 0.0, Blackout: false,
+      Items: [
+        { Item: "scotchtape", Name: "Fita Adesiva", Description: "Fita adesiva comum.", Type: "Comum", Price: 45, Weight: 0.05, Image: "scotchtape", Current: 10, Rarity: "common" },
+        { Item: "processor", Name: "Processador", Description: "CPU de computador.", Type: "Comum", Price: 725, Weight: 0.15, Image: "processor", Current: 2, Rarity: "rare" },
+        { Item: "videocard", Name: "Placa de Vídeo", Description: "GPU de alta performance.", Type: "Comum", Price: 4225, Weight: 1.5, Image: "videocard", Current: 1, Rarity: "legendary" },
+        { Item: "goldnecklace", Name: "Colar de Ouro", Description: "Colar de ouro reluzente.", Type: "Comum", Price: 625, Weight: 0.2, Image: "goldnecklace", Current: 0, Rarity: "epic" },
+      ],
+    });
+  };
+
   // ==================== LOJA COM BLACKOUT ====================
   const openBlackout = () => {
     send("Open", {
@@ -191,11 +232,18 @@ if (import.meta.env.DEV && isBrowser()) {
 
     const groups = [
       {
-        label: "Lojas",
+        label: "Compra",
         buttons: [
           { label: "Cash", action: () => openCash(), accent: "#66ad43" },
           { label: "Gemstone", action: () => openGemstone(), accent: "#c6986a" },
           { label: "Consume", action: () => openConsume(), accent: "#6ac6c5" },
+        ],
+      },
+      {
+        label: "Venda",
+        buttons: [
+          { label: "Cash", action: () => openSellCash(), accent: "#b94444" },
+          { label: "Consume", action: () => openSellConsume(), accent: "#b94444" },
         ],
       },
       {

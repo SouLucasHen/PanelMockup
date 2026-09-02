@@ -80,11 +80,15 @@ export const useShopStore = defineStore("shop", {
         0,
       );
     },
-    // Limite de unidades de um item que cabem no carrinho: Max do item menos o
-    // que o jogador já carrega. Infinity = sem limite definido.
+    // Limite de unidades de um item que cabem no carrinho. Em Sell: limite é
+    // o que o jogador tem no inventário. Em Buy: Max menos o que já carrega.
     limitFor: (state) => (key) => {
       const item = state.items.find((entry) => entry.key === key);
-      if (!item || !item.max) return Infinity;
+      if (!item) return Infinity;
+      if (state.mode === "Sell") {
+        return item.current || 0;
+      }
+      if (!item.max) return Infinity;
       return Math.max(item.max - item.current, 0);
     },
     // Custo total do carrinho em unidades do item de troca (Consume)
@@ -94,28 +98,34 @@ export const useShopStore = defineStore("shop", {
         0,
       );
     },
-    // Peso líquido: peso dos itens recebidos menos peso dos itens entregues
-    // Em lojas Consume, o jogador entrega itemWeight × cartConsumeTotal
+    // Peso líquido: peso dos itens recebidos menos peso dos itens entregues.
+    // Em Sell: peso é removido (negativo) — itens saindo do inventário.
+    // Em lojas Consume (Buy): o jogador entrega itemWeight × cartConsumeTotal.
     cartNetWeight(state) {
-      if (state.type !== "Consume" || !state.itemWeight) {
-        return Object.values(state.cart).reduce(
-          (total, entry) => total + (entry.weight ?? 0) * entry.amount,
-          0,
-        );
-      }
-      const received = Object.values(state.cart).reduce(
-        (total, entry) => total + (entry.weight ?? 0) * entry.amount,
+      const total = Object.values(state.cart).reduce(
+        (sum, entry) => sum + (entry.weight ?? 0) * entry.amount,
         0,
       );
+      if (state.mode === "Sell") {
+        return -total;
+      }
+      if (state.type !== "Consume" || !state.itemWeight) {
+        return total;
+      }
       const given = state.itemWeight * state.cartConsumeTotal;
-      return received - given;
+      return total - given;
     },
-    // Se ainda é possível adicionar mais unidades do item ao carrinho
-    // (considerando o que já está no carrinho).
+    // Se ainda é possível adicionar mais unidades do item ao carrinho.
+    // Em Sell: limite é o que o jogador possui (current).
+    // Em Buy: Max menos o que já carrega.
     canAddMore: (state) => (key) => {
       const item = state.items.find((entry) => entry.key === key);
-      if (!item || !item.max) return true;
+      if (!item) return false;
       const inCart = (state.cart[key] && state.cart[key].amount) || 0;
+      if (state.mode === "Sell") {
+        return inCart < (item.current || 0);
+      }
+      if (!item.max) return true;
       return inCart < Math.max(item.max - item.current, 0);
     },
   },

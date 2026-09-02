@@ -70,15 +70,22 @@ export default function setTheme(mainColor, shopColors = {}, rarityColors = {}) 
   // painel (nada de azul/roxo fora do tema). Base + hover derivado (~12%).
   const shopVars = {
     buy: "shopBuy",
+    sell: "shopSell",
     category: "shopCategory",
   };
 
   const buyRaw = (shopColors.buy && hexToRgb(shopColors.buy)) || rgb;
   const buy = buyRaw ? { r: Math.round(buyRaw.r * 0.80), g: Math.round(buyRaw.g * 0.80), b: Math.round(buyRaw.b * 0.80) } : null;
+  const sellRaw = (shopColors.sell && hexToRgb(shopColors.sell));
+  const sell = sellRaw ? { r: Math.round(sellRaw.r * 0.80), g: Math.round(sellRaw.g * 0.80), b: Math.round(sellRaw.b * 0.80) } : null;
   const category = (shopColors.category && hexToRgb(shopColors.category)) || (rgb && lighten(rgb, 0.12));
 
   for (const [key, varName] of Object.entries(shopVars)) {
-    const color = key === "buy" ? buy : category;
+    let color;
+    if (key === "buy") color = buy;
+    else if (key === "sell") color = sell;
+    else color = category;
+
     if (color) {
       root.style.setProperty(`--${varName}`, toVar(color));
       root.style.setProperty(`--${varName}Hover`, toVar(lighten(color, 0.12)));

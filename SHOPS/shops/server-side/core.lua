@@ -274,3 +274,65 @@ function Creative.Store(Item,Amount,Slot,Name)
 
 	TriggerClientEvent("inventory:Update",source)
 end
+-----------------------------------------------------------------------------------------------------------------------------------------
+-- SELL
+-----------------------------------------------------------------------------------------------------------------------------------------
+function Creative.Sell(Name,Items)
+	local source = source
+	local Passport = vRP.Passport(source)
+	if not Passport or not Name or not List[Name] or List[Name]["Mode"] ~= "Sell" then
+		return false
+	end
+
+	if not Items or type(Items) ~= "table" or #Items < 1 or #Items > 100 then
+		return false
+	end
+
+	local Shop = List[Name]
+	local Total = 0
+	local Payload = {}
+
+	for _,Entry in pairs(Items) do
+		local Price = Shop.List[Entry.Item]
+		if not Price then
+			return false
+		end
+
+		local Amount = parseInt(Entry.Amount,true)
+		if Amount < 1 then
+			return false
+		end
+
+		if Amount > 1 and (exports.vrp:ItemUnique(Entry.Item) or exports.vrp:ItemLoads(Entry.Item)) then
+			Amount = 1
+		end
+
+		if not vRP.ConsultItem(Passport,Entry.Item,Amount) then
+			TriggerClientEvent("Notify",source,"Aviso","Você não possui a quantidade necessária.","amarelo",5000)
+			return false
+		end
+
+		if vRP.CheckDamaged(Entry.Item) then
+			TriggerClientEvent("Notify",source,"Aviso","Itens danificados não podem ser vendidos.","amarelo",5000)
+			return false
+		end
+
+		Total = Total + (Price * Amount)
+		Payload[#Payload + 1] = { Item = Entry.Item, Amount = Amount }
+	end
+
+	for _,Entry in pairs(Payload) do
+		vRP.TakeItem(Passport,Entry.Item,Entry.Amount,false)
+	end
+
+	if Shop.Type == "Cash" then
+		vRP.GenerateItem(Passport,"dollar",Total,true)
+	elseif Shop.Type == "Consume" and Shop.Item then
+		vRP.GenerateItem(Passport,Shop.Item,Total,true)
+	end
+
+	TriggerClientEvent("inventory:Update",source)
+	TriggerClientEvent("Notify",source,"Sucesso","Venda realizada.","verde",5000)
+
+	return true
+end

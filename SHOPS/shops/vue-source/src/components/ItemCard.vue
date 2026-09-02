@@ -70,24 +70,31 @@ const cardStyle = computed(() => rarityStyle(props.item.rarity));
           <Info class="h-3.5 w-3.5" />
         </button>
 
-        <!-- Adicionar ao carrinho / trocar -->
+        <!-- Adicionar ao carrinho / vender -->
         <button
           @click="handleAdd"
           :disabled="!shop.canAddMore(item.key)"
-          class="flex h-7 w-7 items-center justify-center rounded-[0.25rem] bg-shopBuy text-white transition-colors hover:bg-shopBuyHover disabled:cursor-default disabled:bg-shopBuy/25 disabled:hover:bg-shopBuy/25"
-          :aria-label="shop.type === 'Consume' ? 'Adicionar para troca' : 'Adicionar ao carrinho'"
+          class="flex h-7 w-7 items-center justify-center rounded-[0.25rem] text-white transition-colors disabled:cursor-default disabled:opacity-40"
+          :class="shop.mode === 'Sell' ? 'bg-shopSell hover:bg-shopSellHover disabled:bg-shopSell/25' : 'bg-shopBuy hover:bg-shopBuyHover disabled:bg-shopBuy/25 disabled:hover:bg-shopBuy/25'"
+          :aria-label="shop.mode === 'Sell' ? 'Adicionar para venda' : shop.type === 'Consume' ? 'Adicionar para troca' : 'Adicionar ao carrinho'"
         >
           <Swap v-if="shop.type === 'Consume'" class="h-3.5 w-3.5" />
           <Cart v-else class="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <!-- Preço -->
+      <!-- Preço (ganho em Sell, custo em Buy) -->
       <span class="flex items-center gap-1 text-[0.75rem] font-semibold text-[rgb(var(--common))] truncate">
         <template v-if="shop.type === 'Consume'">x{{ formatPrice(item.price) }}</template>
         <template v-else-if="shop.type === 'Gemstone'"><Gemstone class="w-3 h-3 shrink-0 text-[rgb(var(--common))]" /> {{ formatPrice(item.price) }}</template>
         <template v-else>{{ settings.currency }} {{ formatPrice(item.price) }}</template>
       </span>
+    </div>
+
+    <!-- Quantidade disponível (Sell: mostra quanto o jogador tem) -->
+    <div v-if="shop.mode === 'Sell' && item.current > 0" class="w-full flex items-center justify-between">
+      <span class="text-[0.625rem] font-medium uppercase tracking-wide text-white/40">Você tem</span>
+      <span class="text-[0.625rem] font-semibold text-white/60">{{ item.current }}x</span>
     </div>
   </div>
 </template>

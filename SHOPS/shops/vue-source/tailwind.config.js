@@ -26,6 +26,8 @@ export default {
         // Cores da loja — vêm de Theme.shop (vrp/config/Global.lua)
         shopBuy: "rgb(var(--shopBuy) / <alpha-value>)",
         shopBuyHover: "rgb(var(--shopBuyHover) / <alpha-value>)",
+        shopSell: "rgb(var(--shopSell) / <alpha-value>)",
+        shopSellHover: "rgb(var(--shopSellHover) / <alpha-value>)",
         shopCategory: "rgb(var(--shopCategory) / <alpha-value>)",
         shopCategoryHover: "rgb(var(--shopCategoryHover) / <alpha-value>)",
       },

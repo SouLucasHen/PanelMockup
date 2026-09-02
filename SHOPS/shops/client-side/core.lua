@@ -116,6 +116,21 @@ RegisterNUICallback("Checkout",function(Data,Callback)
 	Callback({ Success = Success and true or false })
 end)
 -----------------------------------------------------------------------------------------------------------------------------------------
+-- SELL
+-----------------------------------------------------------------------------------------------------------------------------------------
+RegisterNUICallback("Sell",function(Data,Callback)
+	local Shop = Opened
+
+	CloseShop()
+
+	local Success = false
+	if MumbleIsConnected() and Shop then
+		Success = vSERVER.Sell(Shop,Data.Items)
+	end
+
+	Callback({ Success = Success and true or false })
+end)
+-----------------------------------------------------------------------------------------------------------------------------------------
 -- MOUNT
 -----------------------------------------------------------------------------------------------------------------------------------------
 RegisterNUICallback("Mount",function(Data,Callback)
@@ -165,18 +180,7 @@ AddEventHandler("shops:Open",function(Number)
 	local Shop = Location[Number]
 	if not Shop then
 		if vSERVER.Permission(Number) and List[Number] then
-			if List[Number].Mode == "Sell" then
-				Opened = Number
-				TriggerEvent("inventory:Open",{
-					Type = "Shops",
-					Mode = List[Number].Mode,
-					Item = List[Number].Item or "dollar",
-					Resource = "shops",
-					Right = "Loja"
-				})
-			else
-				OpenShop(Number)
-			end
+			OpenShop(Number)
 		end
 
 		return
@@ -187,21 +191,10 @@ AddEventHandler("shops:Open",function(Number)
 		return
 	end
 
-	if List[Shop.Mode].Mode == "Sell" then
-		Opened = Shop.Mode
-		TriggerEvent("inventory:Open",{
-			Type = "Shops",
-			Mode = List[Shop.Mode].Mode,
-			Item = List[Shop.Mode].Item or "dollar",
-			Resource = "shops",
-			Right = Shop.Name or "Loja"
-		})
-	else
-		OpenShop(Shop.Mode)
-	end
+	OpenShop(Shop.Mode)
 
 	if Shop.Sound then
-		TriggerEvent("sounds:Private","shop",0.5)
+		TriggerEvent("sounds:playSound","shop","shop",0.5,false)
 	end
 end)
 -----------------------------------------------------------------------------------------------------------------------------------------
